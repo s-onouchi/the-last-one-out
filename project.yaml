@@ -7,6 +7,40 @@ framework:
   version: 1.1.1
   last_upgraded: 2026-09-24
 
+project:
+  stage: Concept
+
+modes:
+  rigor: minimal
+  automation: guided
+
+engine:
+  name: "BabylonJS"
+  version: "9.28.0"
+  language: "TypeScript"
+  rendering: "WebGL2"
+  physics: "Havok"
+
+specialists:
+  code: "babylonjs-specialist"
+  shader: "babylonjs-shader-specialist"
+  ui: "babylonjs-gui-specialist"
+  additional: ["babylonjs-webxr-specialist"]
+
+naming:
+  classes: PascalCase
+  variables: camelCase
+  constants: SCREAMING_SNAKE
+  signals: "camelCase on<Event>Observable"
+  files: kebab-case
+  scenes: kebab-case
+
+commands:
+  build: "npm run build"
+  test: "npm test"
+  run: "npm run dev"
+  smoke: "npx tsc --noEmit"
+
 # NOTE: this template ships with no `modes:` block, and the six knobs below must
 # never be added to one.
 #

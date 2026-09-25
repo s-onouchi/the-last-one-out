@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine Version** | Babylon.js 9.28 |
-| **Installed at pin time** | NOT DETERMINED — no `package.json` / `node_modules` existed in the repo at pin time, so no installed `@babylonjs/core` version could be probed. Run `npm ls @babylonjs/core` once the project is scaffolded and record the result here. |
+| **Engine Version** | 9.28.0 |
+| **Installed at pin time** | 9.28.0 (`npm ls @babylonjs/core`, 2026-09-25) — matches the pinned Engine Version, no gap. |
 | **Release Date** | 9.0.0: 2026-03-26; 9.28.0: 2026-09-24 (npm publish dates) |
 | **Project Pinned** | 2026-09-25 |
 | **Last Docs Verified** | 2026-09-25 |

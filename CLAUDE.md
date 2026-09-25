@@ -5,11 +5,11 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: [CHOOSE: Godot 4 / Unity / Unreal Engine 5 / Babylon.js]
-- **Language**: [CHOOSE: GDScript / C# / C++ / Blueprint / TypeScript]
+- **Engine**: Babylon.js 9.28.0
+- **Language**: TypeScript (strict + noUncheckedIndexedAccess mandatory)
 - **Version Control**: Git with trunk-based development
-- **Build System**: [SPECIFY after choosing engine]
-- **Asset Pipeline**: [SPECIFY after choosing engine]
+- **Build System**: Vite (recommended) or webpack
+- **Asset Pipeline**: glTF/glb import via @babylonjs/loaders, KTX2 textures for production, .env files for IBL
 
 > **Note**: Engine-specialist agents exist for Godot, Unity, Unreal, and
 > Babylon.js with dedicated sub-specialists. Use the set matching your engine.
@@ -26,7 +26,7 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
      session. It defaults to Godot (the template's example engine); skills that
      need the pinned version read docs/engine-reference/<engine>/VERSION.md on
      demand regardless of this import. -->
-@docs/engine-reference/godot/VERSION.md
+@docs/engine-reference/babylonjs/VERSION.md
 
 
 ## Technical Preferences
