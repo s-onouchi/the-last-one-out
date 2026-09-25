@@ -1,6 +1,6 @@
 # Babylon.js Rendering — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 ## Renderer Selection
 
@@ -18,7 +18,7 @@ const engine = useWebGPU
   : new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 ```
 
-**As of 2026-05:**
+**As of 2026-05 (not re-verified 2026-09-25 — doc.babylonjs.com unreachable from the verification environment):**
 - WebGPU stable on Chrome/Edge/desktop Safari
 - Quest browser: WebGPU NOT yet stable (use WebGL2 for XR)
 - iOS Safari: WebGPU recently shipped, spotty
@@ -87,7 +87,8 @@ Compilation is async — pre-compile critical materials with
 | Format | Use | Notes |
 |---|---|---|
 | **glTF / glb** | Primary 3D format | Industry-standard, PBR-aligned, smaller is `.glb` (binary) |
-| **USDz** | Apple ecosystem (8.0+) | Useful for AR pipelines targeting iOS/macOS |
+| **OpenUSD** (`.usd/.usda/.usdc/.usdz`) | Import 9.26+ (WASM loader; see `packages/loaders.md`) | Earlier "8.0+ USDz import" claim was wrong — pre-9.26 Babylon only *exported* USDZ |
+| **FBX** | Import 9.12.1+ | Via `@babylonjs/loaders/FBX`; prefer offline conversion to glTF |
 | `.babylon` | Babylon Editor round-trips | Legacy native format; not for general use |
 | `.obj`, `.stl` | Simple geometry | Via `@babylonjs/loaders`, no PBR data |
 
@@ -170,6 +171,30 @@ at world origin and offsets geometry per frame.
 
 Opt-in API; default rendering unchanged.
 
+## 9.6–9.28 Rendering Changes
+
+| Version | Feature | API / Notes |
+|---|---|---|
+| 9.7 | Texture repetition breaking | `material.textureRepetitionMode = Constants.TEXTURE_REPETITION_NOISE_BLEND` (also `_HEX_TILING`, `_TILE_RANDOMIZATION`, `_VORONOI_BOMBING`; default `_NONE`); `textureRepetitionHexTilingParams`. Standard, PBR, OpenPBR. Costs 3–4 texture fetches |
+| 9.12 | SSAO2 with world-space normals; `HALF_FLOAT` vertex buffer type | Additive |
+| 9.12.1 | Scissor test moved to core as an opt-in engine extension | Additive |
+| 9.14 | `HtmlTexture` (WICG HTML-in-Canvas) | `new HtmlTexture(name, element, options)`; ships a polyfill installer. Browser support for the underlying proposal unverified |
+| 9.16 | GPU particles `emitRateControl` setter | Additive |
+| 9.21.1 | **`FSR1RenderingPipeline`** (AMD FSR 1: EASU upscale + RCAS sharpen) | `new FSR1RenderingPipeline(name, scene, cameras?)`; `scaleFactor`, `sharpnessStops` (default 0.2; 0 = max sharpness), `isSupported`. Runs on WebGPU, WebGL2 (`engine.version >= 2`) and Babylon Native |
+| 9.24 | White balance in image processing | `temperature` (Kelvin) / `tint`; `whiteBalanceEnabled` on `ImageProcessingPostProcess` |
+| 9.26 | IBL shadows on `ShadowOnlyMaterial`; object-ID geometry textures | Additive |
+| 9.26.1 | `DitheredTileFadeMaterialPlugin` | `new DitheredTileFadeMaterialPlugin(material)` |
+| 9.26.2 | `MeshBlendingPostProcess` | `new MeshBlendingPostProcess(name, scene, camera, options)` |
+| 9.27.1 | Normalized occlusion-query visibility API | Additive; 9.27.1 also fixed WebGPU occlusion-query begin sequencing |
+| 9.23 | Shader loading state shared across material instances | Perf improvement, no API change |
+| 9.x | Gaussian Splatting | Streaming + LOD (9.12.1–9.23), SPZ v4, 16-bit PLY, `KHR_gaussian_splatting` (9.16); Frame Graph supports splats/sprites/particles in geometry rendering (9.27.1) |
+
+Frame Graph: 9.x minors continue to extend it (IBL shadows hardening 9.14, splats
+9.27.1); the API remains "advanced, opt-in".
+
+Sources: CHANGELOG (https://github.com/BabylonJS/Babylon.js/blob/master/CHANGELOG.md),
+PR https://github.com/BabylonJS/Babylon.js/pull/18723 (FSR 1), `@babylonjs/core` 9.28.0 typings.
+
 ## Performance Targets
 
 - 60 FPS desktop: 16.6ms/frame
@@ -189,7 +214,7 @@ Measure with:
 - `mesh.alwaysSelectAsActiveMesh = true` only for guaranteed-visible moving objects
 - LOD levels: `mesh.addLODLevel(distance, lowPolyMesh)`
 - Frustum + occlusion culling are on by default; respect them in scene layout
-- Use `MultiMeshInstance3D`/instancing for repeated objects (foliage, props)
+- Use instancing for repeated objects (foliage, props): `mesh.createInstance(name)` (`InstancedMesh`) or thin instances (`mesh.thinInstanceAdd(matrix)`) — `MultiMeshInstance3D` is a Godot node, not a Babylon.js API
 - Lazy-load `@babylonjs/inspector` — never include in production bundle (~5MB gzip)
 
 ## Source Documents

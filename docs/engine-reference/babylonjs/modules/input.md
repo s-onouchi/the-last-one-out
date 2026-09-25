@@ -1,6 +1,6 @@
 # Babylon.js Input — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 Babylon.js handles input via `Scene` observables, `InputManager`, and the
 WebXR input subsystem for controllers / hands.
@@ -65,6 +65,37 @@ gamepadManager.onGamepadConnectedObservable.add((gamepad) => {
 ```
 
 Babylon.js auto-detects Xbox, PlayStation, generic HID gamepads. Treat button IDs as conventions — verify against actual hardware (Xbox A may map differently than PS X depending on browser).
+
+## Camera Input Mapping (9.8+ / 9.12.1+)
+
+Built-in cameras now route input through a declarative `InputMapper`
+(`@babylonjs/core/Cameras/inputMapper`) held on `camera.movement.input`:
+
+| Camera | `camera.movement` type | Since |
+|---|---|---|
+| `ArcRotateCamera` | `ArcRotateCameraMovement` | 9.8 |
+| `GeospatialCamera` | `GeospatialCameraMovement` | 9.8 |
+| `FreeCamera`, `FlyCamera` | `TargetCameraMovement` | 9.12.1 |
+
+- `inputMap` is an ordered array of entries (pointer / wheel / touch / keyboard);
+  **first matching entry wins**. API: `getEntry(source, interaction, conditions?)`,
+  `resolveInteraction(source, conditions?)`, `resetInputMap()`.
+- Legacy ArcRotate flags (`useCtrlForPanning`, `panningMouseButton`,
+  `useAltToZoom`) still work — they are bridged into the input map.
+- Per-input sensitivity properties on Geospatial inputs are deprecated in favour
+  of the `sensitivity` field on input-map entries (see `deprecated-apis.md`).
+- Movement/inertia is framerate-independent; retest camera feel at 120/144/240 Hz.
+
+For **gameplay** input, keep the project's own action-mapping layer (above);
+`InputMapper` only configures camera controls.
+
+Sources: https://github.com/BabylonJS/Babylon.js/pull/18379, https://github.com/BabylonJS/Babylon.js/pull/18573; `@babylonjs/core` 9.28.0 typings.
+
+## Other 9.6–9.28 Input Changes
+
+- `canvasTabIndex` engine option (9.14) — sets the canvas `tabIndex` (keyboard focus / accessibility).
+- 9.10.1: modern Xbox controllers on Linux are no longer detected as Generic by `DeviceSourceManager`.
+- WebXR controller haptics: see `modules/webxr.md`.
 
 ## Touch (Mobile)
 

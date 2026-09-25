@@ -1,6 +1,6 @@
 # Babylon.js Animation — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 ## Animation Types
 
@@ -16,14 +16,17 @@ Last verified: 2026-05-03 | Engine: Babylon.js 9.5
 When importing a glTF/glb file, animations come back as `AnimationGroup` instances:
 
 ```typescript
-const result = await SceneLoader.ImportMeshAsync("", "/models/", "character.glb", scene);
+// Module-level loader function (the SceneLoader class is @deprecated — see deprecated-apis.md)
+import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader";
+
+const result = await ImportMeshAsync("/models/character.glb", scene);
 const idleGroup = result.animationGroups.find(g => g.name === "Idle");
 idleGroup?.start(true /*loop*/);
 ```
 
 - `result.animationGroups` is the canonical entry point — never construct from raw curves
 - Group names match the source DCC tool's clip names
-- Default behavior: animations are stopped on import; explicitly `start()` to play
+- Default behavior (glTF): the loader's `animationStartMode` defaults to `GLTFLoaderAnimationStartMode.FIRST` — the **first** animation group auto-plays on import. Pass `pluginOptions: { gltf: { animationStartMode: GLTFLoaderAnimationStartMode.NONE } }` to keep all stopped, then `start()` explicitly (verified in `@babylonjs/loaders` 9.28.0 `glTF/glTFFileLoader.pure.js`; corrects an earlier "stopped on import" claim)
 
 ## Animation Group Control
 
@@ -49,18 +52,57 @@ sprintGroup.start(true);
 
 ## Animation Retargeting (9.0+)
 
-New in 9.0: built-in retargeting API for applying animations from one skeleton to a different (but compatible) skeleton.
+Built-in retargeting for applying animations from one skeleton to a different
+(but compatible) skeleton.
+
+> **CORRECTION (2026-09-25):** an earlier version of this file showed
+> `AnimationRetargeting.RetargetAnimations(...)`. No such class exists in the
+> `@babylonjs/core` 9.5.0 or 9.28.0 typings. The real API is `AnimatorAvatar`:
 
 ```typescript
-const retargeted = AnimationRetargeting.RetargetAnimations(
-  sourceAnimGroup,
-  sourceSkeleton,
-  targetSkeleton,
-  scene
-);
+import { AnimatorAvatar } from "@babylonjs/core/Animations/animatorAvatar";
+
+const avatar = new AnimatorAvatar("hero", heroRootNode);
+const retargeted = avatar.retargetAnimationGroup(sourceAnimGroup, {
+  // optional IRetargetOptions, e.g.:
+  mapNodeNames: new Map([["mixamorig:Hips", "Hips"]]),
+});
+retargeted.start(true);
 ```
 
+Retargeting matches by target (TransformNode / MorphTarget) names; unmatched
+targeted animations are dropped. The source group must animate transform nodes
+(typical for glTF), not bones. Other options include `rootNodeName`,
+`groundReferenceNodeName`, `fixGroundReference`, `groundReferenceVerticalAxis`.
+9.7 fixed `retargetAnimationGroup` clobbering active animations.
+
 Use case: ship one character animation library, apply to many character meshes with similar bone structure. Significantly reduces animation asset count.
+
+Source: `@babylonjs/core` 9.28.0 `Animations/animatorAvatar.d.ts`
+
+## Root Motion (9.28+)
+
+`RootMotionClip` analyses an `AnimationGroup` once (without modifying it) and
+produces an in-place copy; `RootMotionController` then moves the character by
+the extracted motion during playback.
+
+```typescript
+import { RootMotionClip, RootMotionController } from "@babylonjs/core/Animations/rootMotion";
+
+const walk = new RootMotionClip(walkGroup /*, IRootMotionClipOptions */);
+const controller = new RootMotionController(walk.characterNode, [walk]);
+walk.animationGroup.start(true); // play the in-place copy; the character travels
+```
+
+- `IRootMotionClipOptions`: `rootNode`, `characterNode`, `extractRotation`,
+  `extractLateralMotion`, `upAxis`, `samplesPerSecond`, `minimumTravel`,
+  `minimumTurn`, `directionSnapAngle`, `cloneAnimations`, …
+- `RootMotionController.applyToCharacter` (default `true`); set `false` to read
+  `deltaPosition` / `deltaRotation` (or `onRootMotionObservable`) and drive a
+  `PhysicsCharacterController` yourself.
+- `addClip()`, `removeClip()`, `reset()`, `dispose()`.
+
+Sources: PR https://github.com/BabylonJS/Babylon.js/pull/18908; `@babylonjs/core` 9.28.0 `Animations/rootMotion.d.ts`
 
 ## Property Animations (Procedural)
 

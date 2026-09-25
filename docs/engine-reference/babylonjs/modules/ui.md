@@ -1,6 +1,6 @@
 # Babylon.js UI — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 > **Status: STUB** — overview of UI options. Detailed patterns live in the
 > `babylonjs-gui-specialist` agent definition. This file will be expanded with
@@ -52,6 +52,36 @@ For game HUD (which is inherently visual), document the trade-off in the GDD.
 - Use `useSmallestIdeal = true` for aspect-correct scaling
 - Containers: `StackPanel` (linear), `Grid` (cells), `Rectangle` (basic), `ScrollViewer` (scrollable)
 - Anchor with `horizontalAlignment` / `verticalAlignment` for corner-pinned controls
+
+### FlexPanel and em/rem Units (9.26+)
+
+`@babylonjs/gui` 9.26 added a CSS-flexbox-like container and font-relative units:
+
+```typescript
+import { FlexPanel } from "@babylonjs/gui/2D/controls/flexPanel";
+
+const bar = new FlexPanel("hotbar");
+bar.flexDirection = "row";          // "row" | "row-reverse" | "column" | "column-reverse"
+bar.flexWrap = "wrap";              // "nowrap" | "wrap" | "wrap-reverse"
+bar.justifyContent = "space-between";
+bar.alignItems = "center";          // "flex-start" | "flex-end" | "center" | "stretch"
+bar.gap = "0.5rem";
+slot.flexGrow = 1;                  // per-child: flexGrow / flexShrink on Control
+bar.addControl(slot);
+```
+
+- `ValueAndUnit` accepts `"2em"` (relative to the control's font size) and
+  `"1rem"` (relative to the GUI root font size) — `ValueAndUnit.UNITMODE_EM` /
+  `UNITMODE_REM`. Usable for dimensions, padding, offsets, text spacing.
+- Prefer rem-based sizing for HUD text so a single root font-size setting can
+  drive a text-scale accessibility option.
+
+Source: PR https://github.com/BabylonJS/Babylon.js/pull/18881; `@babylonjs/gui` 9.28.0 `2D/controls/flexPanel.pure.d.ts`, `2D/valueAndUnit` typings.
+
+### Other 9.6–9.28 GUI changes
+- 9.11: WGSL shader paths for GUI3D (WebGPU).
+- 9.17: `InputText` paste now replaces the highlighted selection.
+- 9.14–9.15: `@babylonjs/gui` split into side-effect-free `.pure` / `.types` modules; normal imports unchanged.
 
 ## Performance
 

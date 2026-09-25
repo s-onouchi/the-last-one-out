@@ -1,6 +1,6 @@
 # Babylon.js WebXR — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 WebXR is a Babylon.js core strength. This document captures the current state
 of XR support, device targets, and feature availability.
@@ -110,6 +110,32 @@ const depth = featuresManager.enableFeature(
 ### Light Estimation
 - `WebXRFeatureName.LIGHT_ESTIMATION`
 - Provides spherical harmonics for matching virtual lighting to real environment
+
+## 9.6–9.28 Changes
+
+API names checked against the `@babylonjs/core` 9.28.0 typings (and absent from 9.5.0 unless noted).
+
+| Version | Area | Change |
+|---|---|---|
+| 9.16 → 9.23 | **WebXR on WebGPU** (experimental) | `new WebGPUEngine(canvas, { xrCompatible: true })` — must be set at engine construction. XR sessions request the `webgpu` feature and use `XRGPUBinding`; projection layer (9.16), quad layers (9.20.1), CPU depth sensing (9.20.1), light estimation (9.23) on WebGPU. Validated upstream on Meta Quest Browser **behind an experimental `XRGPUBinding` flag** — not a shipping-browser path. WebGL2 XR behaviour is unchanged. **Keep WebGL2 for XR.** |
+| 9.23 | Anchors | Persistent anchors: `requestPersistentHandleAsync`, `restorePersistentAnchorAsync`, `restorePersistentAnchorsAsync`, `deletePersistentAnchorAsync`, `persistentHandle` on `WebXRAnchorSystem` |
+| 9.23 | Plane / mesh detection | `semanticLabel` on detected planes and meshes; room-capture support extended (`initiateRoomCapture()` already existed in 9.5) |
+| 9.24 | Depth sensing | `pauseDepthSensingAsync()` / `resumeDepthSensingAsync()` lifecycle controls |
+| 9.24 | Controller haptics | `motionController.playHapticEffectAsync(effectType, params?, actuatorIndex?)`, `getHapticEffects()`, `resetHapticActuatorAsync()`; `pulse(value, duration, actuatorIndex?)` still available |
+| 9.24 | Dynamic viewport scaling | `sessionManager.isViewportScaleSupported(viewIndex)`, `getRecommendedViewportScale(viewIndex)`, `requestViewportScale(viewIndex, scale)` — a per-frame resolution lever for the 90 FPS budget |
+| 9.24 | Tracked sources | New feature `WebXRFeatureName.TRACKED_SOURCES` (`"xr-tracked-sources"`) |
+| 9.24 | Layers | Composition layer controls and limits; `XRInputSource.skipRendering` respected |
+| 9.9.2 | Body tracking | Fixed hand/wrist twist orientation on body-tracking entry |
+
+```typescript
+// Simple haptic pulse (available before 9.24; playHapticEffectAsync is 9.24+)
+const mc = inputSource.motionController;
+if (mc) await mc.pulse(0.6, 40);
+```
+
+Sources: CHANGELOG (https://github.com/BabylonJS/Babylon.js/blob/master/CHANGELOG.md),
+PR https://github.com/BabylonJS/Babylon.js/pull/18650 (WebGPU XR),
+PRs #18840–#18851 (anchors, room capture, depth lifecycle, haptics, tracked sources, layers, viewport scaling).
 
 ## Platform Behavior Matrix
 

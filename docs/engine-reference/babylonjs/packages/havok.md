@@ -1,6 +1,6 @@
 # @babylonjs/havok — Package Reference
 
-Last verified: 2026-05-03 | Package: `@babylonjs/havok` (matched to Babylon.js 9.5)
+Last verified: 2026-09-25 | Package: `@babylonjs/havok` (matched to Babylon.js 9.28)
 
 ## Purpose
 
@@ -22,11 +22,16 @@ Pin the version to match `@babylonjs/core`:
 ```jsonc
 {
   "dependencies": {
-    "@babylonjs/core": "9.5.x",
+    "@babylonjs/core": "9.28.x",
     "@babylonjs/havok": "1.x"   // Havok versions independently of core
   }
 }
 ```
+
+Latest on npm at pin time: **1.3.14** (2026-07-29). No release notes are
+published for 1.3.12–1.3.14 (the GitHub repo has no releases), so what changed
+in those patches is unverified. `@babylonjs/core` does not declare `@babylonjs/havok`
+as a dependency or peer dependency — the pairing is not enforced by npm.
 
 ## Initialization
 
@@ -41,6 +46,18 @@ scene.enablePhysics(new Vector3(0, -9.81, 0), plugin);
 ```
 
 `HavokPhysics()` is async — returns a WASM module. Await it before scene physics enable.
+
+### Plugin Parameters (9.x)
+
+`new HavokPlugin(useDeltaForWorldStep?, hpInjection?, parameters?: HavokPluginParameters)`:
+
+| Parameter | Default | Notes |
+|---|---|---|
+| `maxQueryCollectorHits` | — | Max raycast hits processed |
+| `disableWorldRegions` | `false` | 9.19.1+. Disables Havok world regions when floating origin mode is on — set when your app does its own rebasing |
+| `floatingOriginWorldRadius` | `100000` | Radius of each floating-origin world region |
+
+Source: `@babylonjs/core` 9.28.0 `Physics/v2/Plugins/havokPlugin.d.ts`; PR https://github.com/BabylonJS/Babylon.js/pull/18750
 
 ## Bundle Size
 

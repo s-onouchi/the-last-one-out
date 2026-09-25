@@ -1,6 +1,6 @@
 # @babylonjs/materials — Package Reference
 
-Last verified: 2026-05-03 | Package: `@babylonjs/materials` (matched to Babylon.js 9.5)
+Last verified: 2026-09-25 | Package: `@babylonjs/materials` (matched to Babylon.js 9.28)
 
 ## Purpose
 
@@ -21,8 +21,8 @@ Match version to `@babylonjs/core`:
 ```jsonc
 {
   "dependencies": {
-    "@babylonjs/core": "9.5.x",
-    "@babylonjs/materials": "9.5.x"
+    "@babylonjs/core": "9.28.x",
+    "@babylonjs/materials": "9.28.x"
   }
 }
 ```
@@ -52,6 +52,17 @@ For non-trivial custom looks, prefer **NodeMaterial v2** (visual graph) over bak
 | **FurMaterial** | Fur shells (multi-pass rendering) | `FurMaterial` |
 | **MixMaterial** | Blend up to 4 textures with mixmap | `MixMaterial` |
 | **ShadowOnlyMaterial** | Receives shadows but is otherwise invisible | `ShadowOnlyMaterial` |
+
+### 9.6–9.28 Changes
+
+- **GridMaterial** (9.10.1): multi-scale LOD, horizon fade, depth compositing, above/below colour.
+- **WaterMaterial** (9.16.2): fixed WGSL shader (WebGPU) using an undefined `toLinearSpace` on `vec3`.
+- **ShadowOnlyMaterial** (9.26): IBL shadows support.
+- **SkyMaterial** (9.26): HDR output and cloudiness.
+- The whole `@babylonjs/*` family moved to `.pure` / side-effect split modules
+  in 9.14–9.15; normal side-effect imports shown below are unchanged.
+
+Source: CHANGELOG (https://github.com/BabylonJS/Babylon.js/blob/master/CHANGELOG.md). Property names for the new GridMaterial / SkyMaterial options were not verified — check TypeDoc before use.
 
 ## Side-Effect Imports
 

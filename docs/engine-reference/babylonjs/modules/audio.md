@@ -1,6 +1,6 @@
 # Babylon.js Audio — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 ## ⚠️ AudioEngine v2 (8.0 Breaking Change)
 
@@ -56,6 +56,34 @@ Babylon.js routes spatial audio through Web Audio API panner nodes. Listener pos
 | `exponential` | Exponential falloff (more dramatic dropoff) |
 
 Set via `sound.distanceModel = "linear"`.
+
+## AudioEngine v2: 9.6–9.28 Changes
+
+The examples above use the legacy `Sound` class (not tagged `@deprecated` in
+9.28). For AudioV2 (`CreateAudioEngineAsync`, `CreateSoundAsync`,
+`CreateStreamingSoundAsync` from `@babylonjs/core/AudioV2`), these landed after 9.5:
+
+- **Distance-only spatial mode (9.8):** `spatialPanningEnabled: false` at
+  creation, or `sound.spatial.panningEnabled = false` at runtime — keeps
+  `linear` / `inverse` / `exponential` distance attenuation but no L/R panning.
+  Sound cones are **not** applied while panning is disabled.
+  Source: https://github.com/BabylonJS/Babylon.js/pull/18462
+- **Waveform data (9.11):** analyzer gains `getByteTimeDomainData()` /
+  `getFloatTimeDomainData()` alongside the frequency-data getters.
+- **iOS ringer switch (9.26):** `CreateAudioEngineAsync({ disableIOSRingerSwitchWorkaround: true })`
+  disables the silent HTML audio element Babylon uses so WebAudio plays with the
+  ringer off. Default `false`. Upstream: disabling "can avoid rendering
+  performance degradation on affected iOS and iPadOS devices, but WebAudio may be
+  muted when the ringer switch is off" — a product decision, record it in an ADR.
+- **Fixes worth knowing (9.14–9.18.2):** play options now applied when resuming
+  a paused sound; live `loopStart` / `loopEnd` changes propagate to playing
+  static sounds; seek-after-resume offset fixed; MediaStream/WebRTC sources are
+  spatialized out of the box (relevant to voice chat).
+- Inspector v2 gained AudioV2 support (9.9.2).
+
+Sources: CHANGELOG (https://github.com/BabylonJS/Babylon.js/blob/master/CHANGELOG.md),
+`@babylonjs/core` 9.28.0 `AudioV2/webAudio/webAudioEngine.d.ts`,
+`AudioV2/abstractAudio/subProperties/abstractAudioAnalyzer.d.ts`.
 
 ## Audio Buses and Mixing
 

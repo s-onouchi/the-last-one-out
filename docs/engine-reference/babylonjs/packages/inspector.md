@@ -1,6 +1,6 @@
 # @babylonjs/inspector — Package Reference
 
-Last verified: 2026-05-03 | Package: `@babylonjs/inspector` (matched to Babylon.js 9.5)
+Last verified: 2026-09-25 | Package: `@babylonjs/inspector` (matched to Babylon.js 9.28)
 
 ## Purpose
 
@@ -71,6 +71,23 @@ window.addEventListener("keydown", async (e) => {
 - **Animations** — animation group control, keyframe scrubber
 - **GUI** — debug Babylon GUI hierarchies (new in v2)
 - **XR** — XR session inspection (new in v2)
+
+### Added in 9.6–9.28
+
+- **Project Authoring pane** (9.9.1): Smart Assets (9.7) + OverrideManager +
+  `.babylonproj` project files; FBX allowed in asset add/swap (9.17);
+  `.babylonproj` loadable in the Sandbox (9.16).
+- **AudioV2 support** (9.9.2).
+- Option to disable "teaching moments" (9.11).
+- Material texture debug toggle (9.9.2); PBR metallic texture channel mapping (glTF ORM) exposed (9.16).
+- Gaussian-splatting stream diagnostics; Explorer contribution APIs for extensions (9.26).
+- Initial "Babylon Lite" support (9.26) and Inspector Lite text/sprite layers (9.26.2).
+- Mesh bounding-box dimensions display (9.27.1).
+- Flow Graph Editor + Inspector can edit live scenes (9.17.1).
+- 9.9.0 fixed Havok WASM serving inside Inspector v2.
+
+Source: CHANGELOG (https://github.com/BabylonJS/Babylon.js/blob/master/CHANGELOG.md).
+"Babylon Lite" is not described further in the sources checked — unverified what it is.
 
 ## Common Patterns
 

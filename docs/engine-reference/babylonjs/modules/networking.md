@@ -1,6 +1,6 @@
 # Babylon.js Networking — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 ## ⚠️ No Built-in Networking
 

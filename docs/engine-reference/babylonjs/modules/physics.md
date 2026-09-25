@@ -1,6 +1,6 @@
 # Babylon.js Physics — Quick Reference
 
-Last verified: 2026-05-03 | Engine: Babylon.js 9.5
+Last verified: 2026-09-25 | Engine: Babylon.js 9.28
 
 ## Default: Havok (`@babylonjs/havok`)
 
@@ -96,6 +96,22 @@ body.setMassProperties({ mass: 1 });
 Use `body.setCollisionCallbackEnabled(true)` and listen via
 `scene.onBeforePhysicsObservable` — V2 has no built-in trigger event but can be
 emulated through collision callbacks.
+
+## 9.6–9.28 Changes
+
+- **`PhysicsCharacterController`**: `maxStepHeight` (9.7) — strict cap on step
+  climbing (0 = rely on `maxSlopeCosine` / capsule riding); step-up only
+  triggers against STATIC and ANIMATED bodies. Slopes whose contact rises above
+  `maxStepHeight` are treated as walls — pick it large enough for walkable slopes.
+  Also new: `footOffset`, `shapeOptions` / `setShapeOptions(options, preserveFootPosition?)`
+  (9.17.1). 9.19.1 fixed incorrect inverse-inertia-tensor rows in the controller.
+- **Havok + floating origin**: `HavokPluginParameters.disableWorldRegions` /
+  `floatingOriginWorldRadius` (9.19.1) — see `packages/havok.md`. 9.17.1 fixed
+  empty world regions not being released.
+- `PhysicsAggregate` no longer mutates the caller's options object (bug fix, 9.12.0).
+
+Sources: CHANGELOG (https://github.com/BabylonJS/Babylon.js/blob/master/CHANGELOG.md),
+PR https://github.com/BabylonJS/Babylon.js/pull/18449, `@babylonjs/core` 9.28.0 typings.
 
 ## Performance Notes
 
