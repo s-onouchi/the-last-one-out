@@ -74,7 +74,7 @@ enforced.**
 - **ai-programmer** — Implement NPC/enemy AI behavior for the feature
 - **technical-artist** — Create VFX, shader effects, and visual feedback
 - **sound-designer** — Define audio events, impact sounds, and ambient combat audio
-- **engine specialist** (primary) — Validate architecture and implementation patterns are idiomatic for the engine (the primary specialist is `<engine>-specialist` from `engine.name` — Godot→`godot-specialist`, Unity→`unity-specialist`, Unreal→`unreal-specialist`; fall back to the Primary line of `## Engine Specialists` in `technical-preferences.md`)
+- **engine specialist** (primary) — Validate architecture and implementation patterns are idiomatic for the engine (the primary specialist is `<engine>-specialist` from `engine.name` — Godot→`godot-specialist`, Unity→`unity-specialist`, Unreal→`unreal-specialist`, BabylonJS→`babylonjs-specialist`; fall back to the Primary line of `## Engine Specialists` in `technical-preferences.md`)
 - **qa-tester** — Write test cases and validate the implementation
 
 ## How to Delegate
@@ -134,7 +134,7 @@ Delegate to **gameplay-programmer** (with **ai-programmer** if AI is involved):
 - Output: architecture sketch with file list and interface definitions
 
 Then spawn the **primary engine specialist** to validate the proposed architecture:
-- Is the class/node/component structure idiomatic for the pinned engine? (e.g., Godot node hierarchy, Unity MonoBehaviour vs DOTS, Unreal Actor/Component design)
+- Is the class/node/component structure idiomatic for the pinned engine? (e.g., Godot node hierarchy, Unity MonoBehaviour vs DOTS, Unreal Actor/Component design, Babylon.js TransformNode composition + Havok `PhysicsBody`/`PhysicsShape` hitboxes with collision callbacks, per `docs/engine-reference/babylonjs/modules/physics.md`)
 - Are there engine-native systems that should be used instead of custom implementations?
 - Any proposed APIs that are deprecated or changed in the pinned engine version?
 - Output: engine architecture notes — incorporate into the architecture before Phase 3 begins

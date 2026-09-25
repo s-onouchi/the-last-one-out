@@ -151,8 +151,8 @@ For each content type found in Phase 1, scan the relevant directories to count
 what has been implemented. Use Glob and Grep to locate files.
 
 **Levels / Areas / Maps:**
-- Glob `assets/**/*.tscn`, `assets/**/*.unity`, `assets/**/*.umap`
-- Glob the **code root** for scene files: `*.tscn` (Godot), `*.unity` (Unity), `*.umap` (Unreal). Resolve the root per `.claude/docs/code-root-resolution.md`. **If the code root is unresolved, report `NOT ASSESSED — code root unresolved` rather than zero hits.**
+- Glob `assets/**/*.tscn`, `assets/**/*.unity`, `assets/**/*.umap`, `assets/**/*.{glb,gltf,babylon}`, `public/**/*.{glb,gltf,babylon}`
+- Glob the **code root** for scene files: `*.tscn` (Godot), `*.unity` (Unity), `*.umap` (Unreal); Babylon.js has no scene-file format of its own — levels are `.glb`/`.gltf`/`.babylon` assets or TypeScript scene-builder modules under `src/`. Resolve the root per `.claude/docs/code-root-resolution.md`. **If the code root is unresolved, report `NOT ASSESSED — code root unresolved` rather than zero hits.**
 - Look for scene files in subdirectories named `levels/`, `areas/`, `maps/`,
   `worlds/`, `stages/`
 - Count unique files that appear to be level/scene definitions (not UI scenes)

@@ -94,24 +94,28 @@ The security-engineer evaluates each of the following. Skip categories not appli
 
 ### Engine pattern sets — read this before any Category below
 
-**Every pattern list in Categories 1–3 was written for Godot.** On a Unity or
-Unreal project they match nothing, and this skill already states what a zero-hit
+**Every pattern list in Categories 1–3 was written for Godot.** On a Unity,
+Unreal or Babylon.js project they match nothing, and this skill already states what a zero-hit
 scan means: it renders the report clean, "the most dangerous possible failure for
 a security audit". That warning was earned along the **version** axis
 (`File.open` vs `FileAccess`) and the identical hole along the **engine** axis
 shipped anyway. Use the table for `engine.name` resolved in Phase 1.
 
-| Category | Godot | Unity | Unreal |
-|---|---|---|---|
-| 1 — Save / serialization | the Godot list below | **NOT SOURCEABLE** | **NOT SOURCEABLE** |
-| 2 — Network / multiplayer | the Godot list below | `ServerRpc`, `ClientRpc`, `NetworkVariable`, `NetworkObject`, `NetworkManager`, `NetworkBehaviour`, `IsServer`, `IsOwner` | `UFUNCTION`, `Server`, `Client`, `NetMulticast`, `Replicated`, `DOREPLIFETIME`, `GetLifetimeReplicatedProps`, `HasAuthority` |
-| 3 — Input | the Godot list below | `InputSystem`, `PlayerInput`, `ReadValue`, `InputValue` | `EnhancedInput`, `UInputAction`, `InputMappingContext`, `BindAction`, `FInputActionValue` |
-| 4 — Data exposure | engine-agnostic — the list below applies to all three | | |
-| 5, 6 | judgement and manifests, not greps — no engine set needed | | |
+| Category | Godot | Unity | Unreal | Babylon.js (`BabylonJS`) |
+|---|---|---|---|---|
+| 1 — Save / serialization | the Godot list below | **NOT SOURCEABLE** | **NOT SOURCEABLE** | Web platform APIs (Babylon has no save API): `localStorage`, `sessionStorage`, `indexedDB`, `JSON.parse`, `atob`, `Blob`, `FileReader` |
+| 2 — Network / multiplayer | the Godot list below | `ServerRpc`, `ClientRpc`, `NetworkVariable`, `NetworkObject`, `NetworkManager`, `NetworkBehaviour`, `IsServer`, `IsOwner` | `UFUNCTION`, `Server`, `Client`, `NetMulticast`, `Replicated`, `DOREPLIFETIME`, `GetLifetimeReplicatedProps`, `HasAuthority` | No engine layer — grep the transport: `WebSocket`, `onmessage`, `JSON.parse`, `colyseus`, `joinOrCreate`, `room.state`, `RTCPeerConnection`, `PeerJS`, `fetch(`, `EventSource` |
+| 3 — Input | the Godot list below | `InputSystem`, `PlayerInput`, `ReadValue`, `InputValue` | `EnhancedInput`, `UInputAction`, `InputMappingContext`, `BindAction`, `FInputActionValue` | `onPointerObservable`, `onKeyboardObservable`, `GamepadManager`, `VirtualJoystick`, `onPointerClickObservable`, `InputText`, plus DOM sinks `innerHTML`, `eval(`, `new Function(` |
+| 4 — Data exposure | engine-agnostic — the list below applies to all four | | | |
+| 5, 6 | judgement and manifests, not greps — no engine set needed | | | |
 
-The Unity and Unreal names above are **sourced from this repo's pinned
+The Unity, Unreal and Babylon.js names above are **sourced from this repo's pinned
 references** (`docs/engine-reference/unity/modules/{networking,input}.md`,
-`docs/engine-reference/unreal/modules/{networking,input}.md`), not from recall.
+`docs/engine-reference/unreal/modules/{networking,input}.md`,
+`docs/engine-reference/babylonjs/modules/{networking,input}.md`), not from recall.
+The Babylon.js Category 1 row is the exception: Babylon ships no save system, so
+saves go through standard Web Storage / IndexedDB APIs (MDN), which are platform
+APIs rather than engine APIs and not version-pinned.
 Verify them against the pin before use and add what the reference documents that
 this table omits — it is a floor, not a complete set.
 
@@ -190,12 +194,22 @@ Grep for: `api_key`, `secret`, `password`, `token`, `private_key`, `DEBUG`, `pri
 
 Note: Client-side anti-cheat is largely unenforceable. Focus on server-side validation for anything competitive or monetised.
 
+**Browser builds (Babylon.js, or any web export):** the whole client is readable and
+editable by the player. Treat DevTools as a cheat tool shipped with every copy:
+`localStorage`/IndexedDB saves are plain-text editable, globals on `window` (and a
+bundled `Inspector` / `scene.debugLayer`) expose live game state, and source maps in
+the production build hand over the original TypeScript. Check that the release
+build strips the Inspector and source maps, and that nothing competitive or
+monetised is decided client-side.
+
 ### Category 6: Dependency and Supply Chain
 - Are any third-party plugins or libraries used? List them.
 - Do any plugins have known CVEs in the version being used?
 - Are plugin sources verified (official marketplace, reviewed repository)?
 
 Glob for: `addons/`, `plugins/`, `third_party/`, `vendor/` — list all external dependencies.
+Web/Babylon.js projects: read `package.json` and the lockfile instead, and run
+`npm audit --omit=dev` for known CVEs.
 
 ---
 

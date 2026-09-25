@@ -3,7 +3,7 @@
 > **How to go from zero to a shipped game using the Agent Architecture.**
 >
 > This guide walks you through every phase of game development using the
-> 49-agent system, 73 slash commands, and 12 automated hooks. It assumes you
+> 53-agent system, 74 slash commands, and 12 automated hooks. It assumes you
 > have Claude Code installed and are working from the project root.
 >
 > The pipeline has 7 phases. Each phase has a formal gate (`/gate-check`)
@@ -241,7 +241,8 @@ Or with a specific engine:
 **Why this matters:** Once you set the engine, the system knows which
 engine-specialist agents to use. If you pick Godot, agents like
 `godot-specialist`, `godot-gdscript-specialist`, and `godot-shader-specialist`
-become your go-to experts.
+become your go-to experts; pick Babylon.js (`/setup-engine babylonjs 9.5`) and
+`babylonjs-specialist` leads, with the WebXR, shader, and GUI sub-specialists.
 
 ### Step 1.4: Decompose Your Concept Into Systems
 
@@ -1232,7 +1233,9 @@ Tier 3 (Specialists):  gameplay-programmer, engine-programmer,
                        unity-shader-specialist, unity-addressables-specialist,
                        unity-ui-specialist, unreal-specialist,
                        ue-blueprint-specialist, ue-gas-specialist,
-                       ue-replication-specialist, ue-umg-specialist
+                       ue-replication-specialist, ue-umg-specialist,
+                       babylonjs-specialist, babylonjs-webxr-specialist,
+                       babylonjs-shader-specialist, babylonjs-gui-specialist
 ```
 
 **Coordination rules:**
@@ -1403,6 +1406,10 @@ Reads existing code and generates GDD-format design documentation from it.
 | Unreal Blueprints | `ue-blueprint-specialist` | 3 |
 | Unreal replication | `ue-replication-specialist` | 3 |
 | Unreal UMG/CommonUI | `ue-umg-specialist` | 3 |
+| Babylon.js-specific help | `babylonjs-specialist` | 3 |
+| Babylon.js WebXR (VR/AR) | `babylonjs-webxr-specialist` | 3 |
+| Babylon.js shaders/NodeMaterial | `babylonjs-shader-specialist` | 3 |
+| Babylon GUI / 3D GUI | `babylonjs-gui-specialist` | 3 |
 
 ### Agent Hierarchy
 
@@ -1428,9 +1435,9 @@ conflicts go to `producer`.
 
 ## Appendix B: Slash Command Quick-Reference
 
-### All 73 Commands by Category
+### All 74 Commands by Category
 
-#### Onboarding and Navigation (6)
+#### Onboarding and Navigation (7)
 
 | Command | Purpose | Phase |
 |---------|---------|-------|
@@ -1438,6 +1445,7 @@ conflicts go to `producer`.
 | `/help` | Context-aware "what do I do next?" | Any |
 | `/project-stage-detect` | Full project audit to determine current phase | Any |
 | `/setup-engine` | Configure engine, pin version, set preferences | 1 |
+| `/settings` | View or change project config (`project.yaml` / `project.local.yaml`) | Any |
 | `/adopt` | Brownfield audit and migration plan | Any (existing projects) |
 | `/skill-improve` | Improve a skill via test-fix-retest loop | Any |
 

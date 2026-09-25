@@ -171,5 +171,7 @@ None. `/test-helpers` is a scaffolding utility. No director gates apply.
   follows the same pattern as factory helpers and is not separately tested.
 - Unity C# helper generation (using NSubstitute or custom mocks) follows the
   same logic as Case 1 with language-appropriate output.
+- Babylon.js TypeScript helper generation (Vitest `expect`, `NullEngine` scene
+  factory with `dispose()` teardown) follows the same logic as Case 1.
 - The case where the requested helper type is not recognized is not tested;
   the skill would ask the user to clarify the helper type.

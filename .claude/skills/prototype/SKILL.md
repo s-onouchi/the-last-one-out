@@ -185,7 +185,13 @@ Reframe the hypothesis and simplify aggressively, or switch to Paper path.
 
 **Output:** A minimal runnable engine project in `prototypes/[name]-concept/`.
 
-**Lighter alternative — Love2D (Lua):** If the project engine (Godot, Unity, Unreal)
+**Babylon.js projects:** the Engine path is browser-native — scaffold a Vite +
+TypeScript app in `prototypes/[name]-concept/` (`npm create vite@latest`, then
+`npm i @babylonjs/core`), iterate with `npm run dev`, and share the `npm run build`
+output exactly like an HTML prototype (itch.io, a link). Feel latency is real
+browser latency, so this is a valid feel test when the shipping target is web.
+
+**Lighter alternative — Love2D (Lua):** If the project engine (Godot, Unity, Unreal, Babylon.js)
 feels too heavy to stand up for a throwaway build, consider Love2D — a minimal 2D
 framework that installs in minutes, requires no project scaffolding, and renders
 natively with no browser latency. Used by many indie devs for rapid 2D action and
@@ -326,7 +332,8 @@ controller naturally produces, you learn exactly what the AI needs to do.
 
 After writing the initial code:
 
-> "The prototype files are written. Run the project in your engine now.
+> "The prototype files are written. Run the project in your engine now
+> (Babylon.js: `npm install && npm run dev`, then open the printed URL).
 > If there are errors, paste them here and I'll fix them. If it runs,
 > describe what you see and whether it feels like it's answering the question."
 

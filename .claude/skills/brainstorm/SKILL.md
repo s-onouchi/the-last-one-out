@@ -333,10 +333,10 @@ Ground the concept in reality:
 - **Target platform**: Use `AskUserQuestion` — "What platforms are you targeting for this game?"
   Options: `PC (Steam / Epic)` / `Mobile (iOS / Android)` / `Console` / `Web / Browser` / `Multiple platforms`
   Record the answer — it directly shapes the engine recommendation and will be passed to `/setup-engine`.
-  Note platform implications if relevant (e.g., mobile means Unity is strongly preferred; console means Godot has limitations; web means Godot exports cleanly).
+  Note platform implications if relevant (e.g., mobile means Unity is strongly preferred; console means Godot has limitations; web means Babylon.js is browser-native and Godot exports cleanly; browser-delivered VR/AR means Babylon.js WebXR).
 
 - **Engine experience**: Use `AskUserQuestion` — "Do you already have an engine you work in?"
-  Options: `Godot` / `Unity` / `Unreal Engine 5` / `No preference — help me decide`
+  Options: `Godot` / `Unity` / `Unreal Engine 5` / `Babylon.js` / `No preference — help me decide`
   - **This decision always prompts regardless of `modes.automation` —
     including `autonomous` mode.** Engine choice is a project-wide
     architectural commitment that downstream tooling depends on and is

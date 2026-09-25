@@ -295,7 +295,7 @@ just translating text. This mode validates the implementation.
 Determine the engine: read `engine.name` from `project.yaml`; if that key is absent or empty (including when `project.yaml` has no `engine:` block), fall back to `.claude/docs/technical-preferences.md`. Then check:
 
 **Layout mirroring**
-- Is RTL layout enabled in the engine? (Godot: `Control.layout_direction`, Unity: `RTL Support` package, Unreal: text direction flags)
+- Is RTL layout enabled in the engine? (Godot: `Control.layout_direction`, Unity: `RTL Support` package, Unreal: text direction flags, Babylon.js: CSS `dir="rtl"` for HTML-overlay UI; for Babylon GUI, verify text/control alignment manually — mirroring is not covered by `docs/engine-reference/babylonjs/modules/ui.md`)
 - Are all UI containers set to auto-mirror, or are positions hardcoded?
 - Do progress bars, health bars, and directional indicators mirror correctly?
 

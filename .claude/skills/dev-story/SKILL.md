@@ -31,7 +31,7 @@ drives implementation to completion — including writing the test.
 
 **After all sprint stories are done:** run `/team-qa sprint` to execute the full QA cycle and get a sign-off verdict before advancing the project stage.
 
-**Output:** Source code under the project's **code root** + test file in `tests/`. Resolve the code root from `engine.name` (`src/` Godot, `Assets/` Unity, `Source/<Module>/` Unreal) per `.claude/docs/code-root-resolution.md`.
+**Output:** Source code under the project's **code root** + test file in `tests/`. Resolve the code root from `engine.name` (`src/` Godot, `Assets/` Unity, `Source/<Module>/` Unreal, `src/` Babylon.js) per `.claude/docs/code-root-resolution.md`.
 
 ---
 
@@ -273,7 +273,7 @@ specialist implements here" — resolved from the engine *and the language*, whi
    instead of, `specialists.code`.
 3. **The generic `<engine>-specialist`** — derived from `engine.name`
    (Godot→`godot-specialist`, Unity→`unity-specialist`,
-   Unreal→`unreal-specialist`) — for architecture-level and broad engine
+   Unreal→`unreal-specialist`, BabylonJS→`babylonjs-specialist`) — for architecture-level and broad engine
    concerns, and as the fallback when the `specialists` block is absent.
 4. If `engine.name` is also absent or empty, read the Primary line of the
    `## Engine Specialists` section of `.claude/docs/technical-preferences.md`.
@@ -357,7 +357,7 @@ Brief the agent with file paths and targeted reading instructions — do not ser
 8. **Explicit instruction**: implement this story following the ADR guidelines, respect the manifest rules, stay within the story's Out of Scope boundaries. Write clean, doc-commented public APIs.
 
 The agent should:
-- Create or modify files under the **resolved code root** following the ADR guidelines. Resolve it per `.claude/docs/code-root-resolution.md` — `src/` is the Godot row, `Assets/Scripts/<System>/` is Unity's, `Source/<Module>/<System>/` is Unreal's. **If the code root cannot be resolved, do not write: report it and stop.** Selecting the engine specialist above is NOT the same as resolving the code root
+- Create or modify files under the **resolved code root** following the ADR guidelines. Resolve it per `.claude/docs/code-root-resolution.md` — `src/` is the Godot row, `Assets/Scripts/<System>/` is Unity's, `Source/<Module>/<System>/` is Unreal's, `src/<system>/` (Vite convention) is Babylon.js's. **If the code root cannot be resolved, do not write: report it and stop.** Selecting the engine specialist above is NOT the same as resolving the code root
 - Respect all Required and Forbidden patterns from the control manifest
 - Stay within the story's Out of Scope boundaries (do not touch unrelated files)
 - Write clean, doc-commented public APIs
@@ -465,7 +465,8 @@ Before collecting anything:
 2. **Verify the output parses.** Run the cheapest check the engine offers —
    `commands.test` or `commands.smoke` from `project.yaml`, or for Godot
    `godot --headless --path . --import`, which surfaces parse errors without
-   running the game. Report what you ran and what it said.
+   running the game; for Babylon.js/TypeScript `npx tsc --noEmit`, which type-checks
+   without bundling. Report what you ran and what it said.
 3. If the engine binary is unavailable, write **`parse NOT VERIFIED — engine
    binary not available`**. Do not infer that the code is fine because it reads
    correctly; that inference is exactly what this step exists to replace.
@@ -477,7 +478,8 @@ Before collecting anything:
    `Read` the image and compare it to the acceptance criteria: clipped text,
    an overflowing panel, a missing element are defects, and this is the only
    step that finds them. Procedure per engine, including how to capture
-   unattended in Godot, Unity and Unreal: `.claude/docs/run-and-observe.md`.
+   unattended in Godot, Unity and Unreal (for Babylon.js, a Playwright
+   `page.screenshot()` against `npx vite preview`): `.claude/docs/run-and-observe.md`.
    Report exactly one line — `Run result: OBSERVED — <what was on screen>`
    with the retained path, `Run result: NOT VERIFIED — <reason>`, or
    `Run result: N/A — <reason>` for a story with genuinely nothing observable.

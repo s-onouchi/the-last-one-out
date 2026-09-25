@@ -40,7 +40,7 @@ phases:
         artifact:
           any_of:
             - glob: "project.yaml"
-              pattern: "name:[[:space:]]*(Godot|Unity|Unreal)"
+              pattern: "name:[[:space:]]*(Godot|Unity|Unreal|Babylon)"
             # technical-preferences.md writes "- **Engine**: Godot 4.6", so the
             # pattern must clear the bold markers. The previous "Engine: [^[]"
             # required a literal "Engine: " and therefore never matched any

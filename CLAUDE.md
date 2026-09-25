@@ -22,7 +22,7 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 <!-- ENGINE-REFERENCE-IMPORT: the line below is engine-specific. /setup-engine
      rewrites it to @docs/engine-reference/<engine>/VERSION.md for the chosen
-     engine, so a Unity or Unreal project stops loading the Godot reference every
+     engine, so a Unity, Unreal or Babylon.js project stops loading the Godot reference every
      session. It defaults to Godot (the template's example engine); skills that
      need the pinned version read docs/engine-reference/<engine>/VERSION.md on
      demand regardless of this import. -->

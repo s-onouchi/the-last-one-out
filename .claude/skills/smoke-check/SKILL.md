@@ -167,6 +167,23 @@ ls -t Saved/Logs/ 2>/dev/null | grep -i "test\|automation" | head -5 \
 If no matching log found: "UE automation tests must be run via the Session
 Frontend or CI pipeline. Please confirm test status manually."
 
+**Babylon.js (Vitest + optional Playwright):**
+Babylon.js runs in the browser, so there is no engine binary — the suite runs
+under Node. Confirm the runner is installed before running it:
+```bash
+grep -q '"vitest"' package.json && echo present || echo ABSENT
+```
+If ABSENT, report `NOT ASSESSED — Vitest not installed` (fix: `/test-setup`).
+If present:
+```bash
+timeout 900 npx vitest run --reporter=verbose --reporter=junit --outputFile.junit=test-results/junit.xml 2>&1
+```
+(or `npm test -- --run` when `package.json` wraps extra flags). Parse the
+`Tests  N passed | M failed` summary line. If `package.json` has a `test:e2e`
+script, also run `timeout 900 npm run test:e2e 2>&1` (Playwright) and count it
+separately; a missing browser download (`npx playwright install`) is NOT RUN,
+not a pass. A timeout (exit 124) is a gate FAILURE, as for Unity.
+
 **Unknown engine / not configured:**
 "Engine not configured in `project.yaml` or
 `.claude/docs/technical-preferences.md`. Run `/setup-engine` to specify the

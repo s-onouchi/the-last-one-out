@@ -272,7 +272,7 @@ CLAUDE.md                          -- Master config (read this first, ~60 lines)
 project.yaml                       -- Machine-readable project config (engine, modes, stage) — source of truth
 .claude/
   settings.json                    -- Claude Code hooks and project settings
-  agents/                          -- 49 agent definitions (YAML frontmatter)
+  agents/                          -- 53 agent definitions (YAML frontmatter)
   skills/                          -- 74 slash command definitions (YAML frontmatter)
   hooks/                           -- 12 event hooks (.sh, wired by settings.json) + yaml-helper.sh
   rules/                           -- 11 path-specific rule files

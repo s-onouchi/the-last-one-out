@@ -138,6 +138,20 @@ Engine-specific monitoring guidance.
   "> 50MB", which silently assumes both the unit *and* a project scale — 50MB is
   a rounding error for one game and a catastrophe for another
 
+**Babylon.js (browser):**
+- Run a production build (`npm run build && npx vite preview`) in Chrome with
+  DevTools open; the dev server's HMR retains objects and skews the numbers
+- Record at each checkpoint: JS heap size (DevTools → Performance monitor,
+  **units as displayed**), and `scene.meshes.length`, `scene.materials.length`,
+  `scene.textures.length` (log them from the console or the Inspector
+  Statistics pane)
+- Take a heap snapshot (DevTools → Memory) at T+0 and at the end; compare for
+  retained `Mesh`/`Texture`/`Observer` objects
+- Alert threshold: heap growth **> 20% over the full soak**, or any scene count
+  that keeps rising across 3+ checkpoints after scene unloads. A rising count
+  is a missing `dispose()` — GPU memory (textures, buffers) leaks with it and is
+  not visible in the JS heap. Also watch for `webglcontextlost` in the console
+
 ### Stability observation items (if focus = stability or all)
 
 At each checkpoint, note:
@@ -181,6 +195,7 @@ Before starting the soak:
   - **Godot**: Debugger → Monitors tab → Memory section visible
   - **Unity**: Memory Profiler window open
   - **Unreal**: `stat memory` ready in console
+  - **Babylon.js**: Chrome DevTools Performance monitor open (JS heap size), Memory tab ready for heap snapshots
 - [ ] Soak target confirmed: [session design intent from game concept]
 - [ ] Prior known issues to watch for: [from most recent playtest / qa-plan]
 

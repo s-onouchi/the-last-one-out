@@ -269,7 +269,7 @@ CLAUDE.md                           # Master configuration
   docs/
     workflow-catalog.yaml           # 7-phase pipeline definition (read by /help)
     templates/                      # 39 document templates (+ per-section guidance)
-src/                                # Game source code (Godot). The code root is
+src/                                # Game source code (Godot, Babylon.js). The code root is
                                     #   ENGINE-SPECIFIC: Unity compiles only
                                     #   Assets/, Unreal builds from Source/<Module>/
 assets/                             # Art, audio, VFX, shaders, data files
@@ -286,7 +286,7 @@ CCGS Skill Testing Framework/       # QA for the skills and agents themselves �
 
 CCGS is a template you are meant to edit. `CCGS Skill Testing Framework/` is how
 you check that an edited or newly written skill still holds up — a catalog of all
-74 skills and 49 agents, per-category quality rubrics, behavioral specs, and
+74 skills and 53 agents, per-category quality rubrics, behavioral specs, and
 templates for writing specs of your own.
 
 ```
@@ -350,7 +350,7 @@ You stay in control. The agents provide structure and expertise, not autonomy.
 
 Coding standards are automatically enforced based on file location. The paths
 below show the Godot code root; on Unity read `src/` as `Assets/`, and on
-Unreal as `Source/<Module>/` — the engine's toolchain fixes that choice, and
+Unreal as `Source/<Module>/` (Babylon.js keeps `src/`, the Vite convention) — the engine's toolchain fixes that choice, and
 `/setup-engine` resolves it for you.
 
 | Path | Enforces |

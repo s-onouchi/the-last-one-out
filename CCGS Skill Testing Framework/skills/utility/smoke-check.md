@@ -191,3 +191,6 @@ None. `/smoke-check` is a pre-QA utility skill. No director gates apply.
   per-platform verdict table; not separately tested here.
 - The case where the engine binary is not on PATH (NOT RUN) follows the PASS WITH
   WARNINGS pattern and is covered by the protocol compliance assertions above.
+- The Babylon.js branch (`npx vitest run`, optional `npm run test:e2e` for
+  Playwright; Vitest absent → NOT ASSESSED) follows the same pattern as Case 1
+  with a Node-based runner instead of an engine binary; not separately fixture-tested.
