@@ -290,7 +290,7 @@ fi
 # itself. Only fires when source code is actually being committed, so a
 # docs-only or config-only commit stays quiet and the notice keeps its meaning.
 if [ -z "$CODE_ROOT" ]; then
-    if echo "$STAGED" | grep -qiE '\.(gd|cs|cpp|cc|hpp|h|c|py|js|ts|rs|java|kt|lua|gdshader|shader|hlsl)$'; then
+    if echo "$STAGED" | grep -qiE '\.(gd|cs|cpp|cc|hpp|h|c|py|js|ts|tsx|rs|java|kt|lua|gdshader|shader|hlsl|glsl|wgsl|fx)$'; then
         WARNINGS="$WARNINGS\nSKIPPED: source files are staged but no code root could be resolved (engine.name unset, and the tree does not name one unambiguously). The hardcoded-value and TODO-owner scans did NOT run. Run /setup-engine, or set engine.name in project.yaml."
     fi
 fi
@@ -298,7 +298,7 @@ fi
 CODE_FILES=""
 [ -n "$CODE_ROOT" ] && CODE_FILES=$(echo "$STAGED" \
     | grep -E "^${CODE_ROOT}/" \
-    | grep -iE '\.(gd|cs|cpp|cc|hpp|h|c|py|js|ts|rs|java|kt|lua)$')
+    | grep -iE '\.(gd|cs|cpp|cc|hpp|h|c|py|js|ts|tsx|rs|java|kt|lua)$')
 if [ -n "$CODE_FILES" ]; then
     HARDCODED=$(printf '%s\n' "$CODE_FILES" | tr '\n' '\0' \
         | xargs -0 grep -lE '(damage|health|speed|rate|chance|cost|duration)[[:space:]]*[:=][[:space:]]*[0-9]+' 2>/dev/null || true)

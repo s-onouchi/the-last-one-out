@@ -46,7 +46,7 @@ A test framework installed at sprint four costs 3 sprints.
    - Glob `tests/unit/` and `tests/integration/` — do subdirectories exist?
    - Glob `.github/workflows/` — does a CI workflow file exist?
    - Glob `tests/gdunit4_runner.gd` (Godot) or `tests/EditMode/` (Unity) or
-     `Source/Tests/` (Unreal) or `vitest.config.ts` / `tests/unit/*.test.ts`
+     `Source/Tests/` (Unreal) or `vitest.config.ts` / `tests/unit/**/*_test.ts`
      (Babylon.js) for engine-specific artifacts.
 
 3. **Report findings**:
@@ -107,7 +107,7 @@ After approval, create the following files:
 # Test Infrastructure
 
 **Engine**: [engine name + version]
-**Test Framework**: [GdUnit4 | Unity Test Framework | UE Automation]
+**Test Framework**: [GdUnit4 | Unity Test Framework | UE Automation | Vitest (+ Playwright)]
 **CI**: `.github/workflows/tests.yml`
 **Setup date**: [date]
 
@@ -232,7 +232,14 @@ Test class naming: F[SystemName]Test
 Test category naming: "MyGame.[System].[Feature]"
 ```
 
-#### Babylon.js (`Engine: Babylon.js`)
+#### Babylon.js (`engine.name: BabylonJS`, legacy `Engine: Babylon.js`)
+
+**`package.json` must already exist** — `/setup-engine` §7.5 scaffolds the Vite
+project. If it is absent, stop and send the user back there; do not create a
+`package.json` holding only the test scripts below, because `commands.build` and
+`commands.run` (`npm run build`, `npm run dev`) would then name scripts that do
+not exist. **Merge** the scripts below into the existing `scripts` block; never
+replace it.
 
 Create `vitest.config.ts` at project root:
 ```typescript
@@ -243,7 +250,15 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["tests/setup.ts"],
-    include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
+    // `*_test.ts` is the framework-wide naming rule (coding-standards.md) and
+    // what /story-done, /regression-suite and /architecture-review glob for.
+    // Vitest's default include matches only `*.test.ts`, so both are listed.
+    include: [
+      "tests/unit/**/*_test.ts",
+      "tests/integration/**/*_test.ts",
+      "tests/unit/**/*.test.ts",
+      "tests/integration/**/*.test.ts",
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -258,16 +273,18 @@ Create `tests/setup.ts`:
 import { vi } from "vitest";
 
 // rAF stubs for headless tests
-global.requestAnimationFrame = vi.fn((cb) => setTimeout(cb, 16) as unknown as number);
-global.cancelAnimationFrame = vi.fn((id) => clearTimeout(id as unknown as NodeJS.Timeout));
+globalThis.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => setTimeout(() => cb(performance.now()), 16) as unknown as number);
+globalThis.cancelAnimationFrame = vi.fn((id: number) => clearTimeout(id));
 ```
 
 Create `tests/unit/README.md`:
 ```markdown
 # Unit Tests
 Pure logic tests — formulas, state machines, data validation.
-No Babylon.js Engine instance; mock or extract pure logic from engine code.
-Naming: `[system]_[feature].test.ts` (e.g., `combat_damage.test.ts`)
+No rendering Engine instance — use `NullEngine` when a `Scene` is needed, or
+extract pure logic from engine code.
+Naming: `[system]_[feature]_test.ts` (e.g., `combat_damage_test.ts`) — the
+framework-wide rule; `vitest.config.ts` includes it explicitly.
 ```
 
 Create `tests/integration/README.md`:

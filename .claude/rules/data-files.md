@@ -22,6 +22,12 @@ paths:
   > `System.Text.Json` `JsonNamingPolicy`). Do **not** switch the file to camelCase
   > to avoid the DTO: keys are the cross-engine contract. Write the DTO and
   > document it as a wire-format boundary — that is the intended shape.
+  >
+  > **On Babylon.js (TypeScript) there is no binding layer to pay for.** Declare
+  > an `interface` whose property names are the snake_case keys and type the
+  > imported JSON with it; the strict-mode compiler then checks every access.
+  > The camelCase rule in `naming.variables` governs your variables, not the
+  > property names of a wire-format type.
 - No orphaned data entries — every entry must be referenced by code or another data file
 - Version data files when making breaking schema changes
 - Include sensible defaults for all optional fields

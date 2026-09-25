@@ -1089,6 +1089,7 @@ The list is a YAML list of these strings. Skills check whether the current decis
 | Godot | `gdunit4` | `godot-test`, `WAT` |
 | Unity | `unity-test-framework` | `nunit`, custom |
 | Unreal | `unreal-automation` | Google Test, custom |
+| BabylonJS | `vitest` | `playwright` (browser/E2E), `jest` |
 
 ---
 
@@ -1223,6 +1224,7 @@ closing, or produces a warning and lets work continue — per test type
 > - Godot: gdunit4 coverage report (markdown export)
 > - Unity: Unity Test Framework coverage (xml export)
 > - Unreal: gcov-style coverage from clang flags
+> - Babylon.js: Vitest `@vitest/coverage-v8` (text/html reporters; add `json-summary` for a machine-readable total)
 > CCGS does not unify these — gate-check reads the engine-appropriate report.
 
 ---
@@ -1340,6 +1342,13 @@ which specialists are routed and which architecture sections are required
 > specifically* (network specialist, netcode review, replication architecture).
 > `platform.online` covers everything else online (cloud saves, leaderboards,
 > telemetry). See next section.
+
+> **`BabylonJS`, not `Babylon.js`.** Skills lowercase this value to derive
+> `docs/engine-reference/<engine>/` and the primary `<engine>-specialist` agent;
+> `babylonjs` is both the directory and the agent prefix. The enum in
+> `yaml-helper.sh` rejects the dotted spelling. (The legacy
+> `technical-preferences.md` mirror keeps the prose name `Babylon.js`;
+> `resolve_code_root` accepts either.)
 
 > **This is a project attribute, not a mode.** It describes what the game is,
 > not how the pipeline operates. It lives in `platform` alongside `targets`,
@@ -1690,7 +1699,7 @@ required at `standard` and `minimal` levels.
 
 **Controls:** Which engine-specific specialist agents are routed to for code
 implementation, review, and architecture validation  
-**Values:** `Godot` | `Unity` | `Unreal`  
+**Values:** `Godot` | `Unity` | `Unreal` | `BabylonJS`  
 **Default:** `[UNSET]` — must be configured via `/setup-engine`  
 **Set by:** `/setup-engine`  
 **Read by:** `dev-story`, `code-review`, `architecture-decision`, `create-architecture`, all `team-*` skills
@@ -1713,6 +1722,7 @@ implementation, review, and architecture validation
 | **Godot** | `godot-gdscript-specialist` (GDScript) or `godot-csharp-specialist` (C#) — driven by `engine.language` | `godot-shader-specialist` | `godot-specialist` | `godot-gdextension-specialist` |
 | **Unity** | `unity-specialist` | `unity-shader-specialist` | `unity-ui-specialist` | `unity-addressables-specialist`, `unity-dots-specialist` |
 | **Unreal** | `unreal-specialist` | `unreal-specialist` | `ue-umg-specialist` | `ue-gas-specialist`, `ue-blueprint-specialist`, `ue-replication-specialist` |
+| **BabylonJS** | `babylonjs-specialist` (TypeScript — the primary covers it) | `babylonjs-shader-specialist` | `babylonjs-gui-specialist` (in-scene Babylon GUI; HTML/DOM overlay UI is `ui-programmer`) | `babylonjs-webxr-specialist` |
 | **[UNSET]** | No specialist spawned — warning emitted | No specialist spawned | No specialist spawned | None |
 
 ---
@@ -1817,6 +1827,15 @@ engine reference in this repo can source it. See `/setup-engine` §"The Godot
 | Godot | `godot --headless --export-debug '<PRESET>'` | `godot --headless --script tests/gdunit4_runner.gd` | `godot --path . --windowed --resolution 1280x720` | `godot --headless --quit-after 5` |
 | Unity | `Unity -batchmode -quit -projectPath . -buildTarget <TARGET>` | `Unity -runTests -projectPath . -testPlatform PlayMode` | `Builds/<Target>/<Game>.exe -screen-width 1280 -screen-height 720 -screen-fullscreen 0` | `Unity -batchmode -quit -projectPath . -executeMethod SmokeCheck.Run` |
 | Unreal | engine-specific (varies by version) | engine-specific | engine-specific | engine-specific |
+| BabylonJS | `npm run build` | `npm test` | `npm run dev` | `npx tsc --noEmit` |
+
+> **Babylon.js commands are npm scripts, and nothing is asked.** A web build has
+> one target (Vite writes `dist/`), so `build` has no preset placeholder. Each
+> `npm` command must name a script in `package.json` — `/setup-engine` §7.5
+> writes `dev`/`build`, `/test-setup` adds `test` — and `project-coherence.sh`
+> reports any that are missing. `run` starts the Vite dev server rather than a
+> window; the run-and-observe step opens it in a browser and captures it (see
+> `.claude/docs/run-and-observe.md`).
 
 > **`<PRESET>` and `<TARGET>` are placeholders, not values to copy.** A Godot
 > export preset is whatever string the operator typed into `export_presets.cfg`;
@@ -1881,14 +1900,14 @@ conventions into a brief, manifest or spec. **NOT by `/code-review` and NOT by
 
 ### Fields
 
-| Field | Values | Godot default | Unity default | Unreal default |
-|-------|--------|---------------|---------------|----------------|
-| `classes` | `PascalCase` \| `snake_case` \| `camelCase` | PascalCase | PascalCase | PascalCase |
-| `variables` | `snake_case` \| `camelCase` | snake_case | camelCase | camelCase |
-| `constants` | `SCREAMING_SNAKE` \| `PascalCase` | SCREAMING_SNAKE | SCREAMING_SNAKE | SCREAMING_SNAKE |
-| `signals` (Godot) / `events` (Unity, Unreal) | `past_tense` \| `on_event_name` | past_tense | on_event_name | OnEventName |
-| `files` | `snake_case` \| `PascalCase` \| `kebab-case` | snake_case | PascalCase | PascalCase |
-| `scenes` / `prefabs` | `snake_case` \| `PascalCase` | snake_case | PascalCase | PascalCase |
+| Field | Values | Godot default | Unity default | Unreal default | Babylon.js default |
+|-------|--------|---------------|---------------|----------------|--------------------|
+| `classes` | `PascalCase` \| `snake_case` \| `camelCase` | PascalCase | PascalCase | PascalCase | PascalCase |
+| `variables` | `snake_case` \| `camelCase` | snake_case | camelCase | camelCase | camelCase |
+| `constants` | `SCREAMING_SNAKE` \| `PascalCase` | SCREAMING_SNAKE | SCREAMING_SNAKE | SCREAMING_SNAKE | SCREAMING_SNAKE |
+| `signals` (Godot) / `events` (Unity, Unreal) / observables (Babylon.js) | `past_tense` \| `on_event_name` | past_tense | on_event_name | OnEventName | `on<Event>Observable` |
+| `files` | `snake_case` \| `PascalCase` \| `kebab-case` | snake_case | PascalCase | PascalCase | kebab-case |
+| `scenes` / `prefabs` | `snake_case` \| `PascalCase` | snake_case | PascalCase | PascalCase | kebab-case (scenes are TS modules) |
 
 > **`signals` vs `events`:** Godot uses signals natively; Unity uses C# events
 > or UnityEvents; Unreal uses delegates and dynamic multicast. The field stays
@@ -2363,7 +2382,7 @@ platform:
   cert_tier: none            # none | itch | steam | console
 
 engine:
-  name: "Godot"              # Godot | Unity | Unreal — set by /setup-engine
+  name: "Godot"              # Godot | Unity | Unreal | BabylonJS — set by /setup-engine
   version: "4.6"
   language: "GDScript"       # GDScript | C# | C++ | Blueprint
   rendering: "Forward+"

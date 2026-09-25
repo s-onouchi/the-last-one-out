@@ -21,7 +21,7 @@
 
 ## The code root is engine-specific
 
-**Two of the three supported engines will not build a project whose code sits in
+**Two of the four supported engines will not build a project whose code sits in
 `src/`.** This is not a style preference — it is a hard constraint of the engine's
 own toolchain:
 
@@ -30,14 +30,15 @@ own toolchain:
 | **Godot** | `src/` | No constraint — Godot loads from `res://` anywhere under the project root. |
 | **Unity** | `Assets/` | Unity compiles **only** `Assets/` and `Packages/`. Code outside them is invisible to the compiler. |
 | **Unreal** | `Source/<Module>/` | UnrealBuildTool discovers modules under `Source/`; content lives in `Content/`. A module elsewhere is not built. |
+| **BabylonJS** | `src/` | No engine constraint — Vite's convention; `index.html` loads `/src/main.ts` and `tsconfig.json` includes `src`. `package.json`, `vite.config.ts` and `index.html` sit at the repo root; static files Vite serves verbatim go in `public/`. |
 
 **Resolve the code root from `engine.name` before writing any source file.** Where
 a skill, rule or template says `src/`, read it as *"the code root"* and substitute
-the row above. `src/` is the table's Godot row, not a universal path.
+the row above. `src/` is the table's Godot and Babylon.js row, not a universal path.
 
 > **Known residual — do not read `src/` as settled.** Roughly 30 files under
 > `.claude/` still name `src/` literally, because they were written when Godot was
-> the only engine walked end to end. They are correct for Godot and wrong for the
-> other two. This section is the authority; those files are the default. The
+> the only engine walked end to end. They are correct for Godot and Babylon.js
+> and wrong for Unity and Unreal. This section is the authority; those files are the default. The
 > breakage is real, not theoretical — a Unity tree laid out this way does not
 > compile, and an Unreal one produces a module no `.uproject` can consume.

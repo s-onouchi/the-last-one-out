@@ -15,15 +15,16 @@ code. This file is the procedure for applying it.
 | Godot | `src/` | No constraint; Godot loads from `res://` anywhere under the project root |
 | Unity | `Assets/` | Unity compiles **only** `Assets/` and `Packages/` |
 | Unreal | `Source/<Module>/` | UnrealBuildTool discovers modules under `Source/`; content lives in `Content/` |
+| BabylonJS | `src/` | No engine constraint; `src/` is the Vite convention `index.html` and `tsconfig.json` point at |
 
-`src/` is the **Godot row of that table, not a universal path.**
+`src/` is the **Godot and Babylon.js rows of that table, not a universal path.**
 
 ## Resolution order
 
 1. `engine.name` from `project.local.yaml`, then `project.yaml`.
 2. The legacy mirror: an `Engine:` line in
    `.claude/docs/technical-preferences.md`. A value of `[TO BE CONFIGURED]`
-   does not count.
+   does not count. A legacy `Babylon.js` value resolves as `BabylonJS`.
 3. Derivation from the tree, but **only when it is unambiguous**. Exactly one of
    `src/`, `Assets/` or `Source/` present means that is the root. Two or more
    present means the project is genuinely undecidable — do not guess.
@@ -64,4 +65,5 @@ write to the wrong directory.
 Where a skill says `src/`, read it as *the code root* and substitute the table
 above. Where a skill greps, glob the resolved root. Where a skill writes,
 write under the resolved root and use the engine's own conventions beneath it
-(`Assets/Scripts/<System>/` on Unity, `Source/<Module>/<System>/` on Unreal).
+(`Assets/Scripts/<System>/` on Unity, `Source/<Module>/<System>/` on Unreal,
+`src/<system>/` on Babylon.js).

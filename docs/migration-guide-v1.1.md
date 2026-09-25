@@ -52,6 +52,12 @@ reviews") becomes `modes.review_mode: solo` in v1.1, which is the same tier
 under its new name. The converter maps it and calls it out in the migration
 report's Warnings, so you'll see the rename rather than have it happen silently.
 
+**One engine name is respelled:** a Babylon.js project's `**Engine**: Babylon.js 9.5`
+becomes `engine.name: "BabylonJS"` / `engine.version: "9.5"`. `engine.name` is an
+enum, and skills lowercase it into `docs/engine-reference/babylonjs/` and
+`babylonjs-specialist`, which the dotted spelling would not produce. Every other
+engine's first word is already its enum value (`Godot`, `Unity`, `Unreal`).
+
 **Not migrated, on purpose:** `technical-preferences.md`'s Forbidden Patterns
 and Allowed Libraries sections have no `project.yaml` equivalent. The
 converter never deletes this file for that reason — see "Finalizing," below.

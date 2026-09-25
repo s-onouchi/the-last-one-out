@@ -75,6 +75,7 @@ falling back to the defaults above when it is absent.
 ## Automated Test Rules
 
 - **Naming**: `[system]_[feature]_test.[ext]` for files; `test_[scenario]_[expected]` for functions
+  (Babylon.js/Vitest: `combat_damage_test.ts` — Vitest's default include matches only `*.test.ts`, so `/test-setup` lists `*_test.ts` in `vitest.config.ts` explicitly)
 - **Determinism**: Tests must produce the same result every run — no random seeds, no time-dependent assertions
 - **Isolation**: Each test sets up and tears down its own state; tests must not depend on execution order
 - **No hardcoded data**: Test fixtures use constant files or factory functions, not inline magic numbers

@@ -7,13 +7,14 @@ has a cutoff date** and game engines update frequently.
 ## Why This Exists
 
 Claude's training data has a knowledge cutoff (currently May 2025). Game engines
-like Godot, Unity, and Unreal ship updates that introduce breaking API changes,
+like Godot, Unity, and Unreal — and web libraries like Babylon.js — ship updates that introduce breaking API changes,
 new features, and deprecated patterns. Without these reference files, agents will
 suggest outdated code.
 
 ## Structure
 
-Each engine gets its own directory:
+Each engine gets its own directory, named by lowercasing `engine.name` in
+`project.yaml` — `godot/`, `unity/`, `unreal/`, `babylonjs/` (from `BabylonJS`):
 
 ```
 <engine>/

@@ -469,7 +469,7 @@ team.size::individual|small|studio
 performance.enforce::warn|block|off
 platform.cert_tier::none|itch|steam|console
 accessibility.target::none|standard|aaa
-engine.name::Godot|Unity|Unreal
+engine.name::Godot|Unity|Unreal|BabylonJS
 project.stage::Concept|Systems Design|Technical Setup|Pre-Production|Production|Polish|Release
 testing.strict.logic::true|false
 testing.strict.integration::true|false
@@ -1184,7 +1184,8 @@ resolve_setting() {
 # WHY THIS EXISTS. `.claude/docs/directory-structure.md` is explicit that the
 # code root is not a style preference but a hard toolchain constraint: Unity
 # compiles only `Assets/` and `Packages/`, and UnrealBuildTool discovers modules
-# under `Source/`. `src/` is that table's GODOT row, not a universal path.
+# under `Source/`. `src/` is that table's GODOT (and Babylon.js / Vite) row, not
+# a universal path.
 #
 # Every hook that filtered staged or on-disk files with a literal `^src/`
 # therefore matched NOTHING on a Unity or Unreal project — and matching nothing
@@ -1236,6 +1237,9 @@ resolve_code_root() {
     godot)   root="src" ;;
     unity)   root="Assets" ;;
     unreal*) root="Source" ;;
+    # Canonical `BabylonJS`; `babylon.js` is what the legacy technical-
+    # preferences mirror yields (`**Engine**: Babylon.js 9.5` → first word).
+    babylonjs|babylon.js) root="src" ;;
     *)       root="" ;;
   esac
 

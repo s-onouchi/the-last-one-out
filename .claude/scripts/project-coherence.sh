@@ -23,6 +23,10 @@
 # such a row. There was no slot, so the step vanished leaving no trace. The row
 # now ships in all three reference files, and check 1 below reads it.
 #
+# Babylon.js has no editor binary and no project.godot: its "installed version"
+# is node_modules/@babylonjs/core, its project file is package.json, and its
+# commands are npm scripts. Checks 3, 4/5 and 6 read those instead.
+#
 # OBSERVATIONS, NEVER VERDICTS
 #
 # Per CLAUDE.md: a script that scores or judges will eventually contradict a mode
@@ -87,7 +91,30 @@ if [ -z "$ENGINE" ]; then
 fi
 
 ENGINE_LC="$(printf '%s' "$ENGINE" | tr 'A-Z' 'a-z')"
+# The canonical value is `BabylonJS`; normalise the display spelling too, so a
+# hand-edited `Babylon.js` still finds docs/engine-reference/babylonjs/.
+[ "$ENGINE_LC" = "babylon.js" ] && ENGINE_LC="babylonjs"
 VERFILE="docs/engine-reference/$ENGINE_LC/VERSION.md"
+
+# Babylon.js is an npm package, not an editor binary: the "installed version"
+# is the one npm resolved into node_modules, and the project file is
+# package.json. Read both once; checks 3, 4/5 and 6 use them.
+BJS_INSTALLED=""
+if [ -f node_modules/@babylonjs/core/package.json ]; then
+  BJS_INSTALLED="$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' node_modules/@babylonjs/core/package.json \
+                   | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
+fi
+# True when package.json declares a script named $1 (dependencies, devDeps and
+# scripts all share the `"name": "value"` shape, so key on the scripts block).
+pkg_has_script() {
+  [ -f package.json ] || return 1
+  awk -v k="$1" '
+    /"scripts"[[:space:]]*:[[:space:]]*\{/ { ins=1; next }
+    ins && /\}/ { ins=0 }
+    ins && $0 ~ "\""k"\"[[:space:]]*:" { found=1 }
+    END { exit found ? 0 : 1 }
+  ' package.json
+}
 
 # --- 1. VERSION.md carries a recorded installed-version probe -----------------
 if [ ! -f "$VERFILE" ]; then
@@ -128,9 +155,12 @@ case "$ENGINE_LC" in
     ;;
   unity)   command -v Unity >/dev/null 2>&1 && PROBE="$(Unity -version 2>/dev/null | head -1)" ;;
   unreal)  command -v UnrealEditor-Cmd >/dev/null 2>&1 && PROBE="$(UnrealEditor-Cmd -version 2>/dev/null | head -1)" ;;
+  babylonjs) [ -n "$BJS_INSTALLED" ] && PROBE="@babylonjs/core $BJS_INSTALLED" ;;
 esac
 
-if [ -z "$PROBE" ]; then
+if [ -z "$PROBE" ] && [ "$ENGINE_LC" = "babylonjs" ]; then
+  skipped "declared version vs installed package — no node_modules/@babylonjs/core/package.json (run npm install). A probe that could not run has not established absence."
+elif [ -z "$PROBE" ]; then
   skipped "declared version vs installed binary — no $ENGINE binary found on PATH. A probe that could not run has not established absence."
 elif [ -z "$VERSION" ]; then
   skipped "declared version vs installed binary — project.yaml has no engine.version"
@@ -145,9 +175,48 @@ else
   fi
 fi
 
-# --- 4/5. Godot: declared rendering + physics vs the real project file --------
-if [ "$ENGINE_LC" != "godot" ]; then
-  skipped "project-file checks — implemented for Godot only; $ENGINE has no single equivalent file this script can read"
+# --- 4/5. Declared rendering + physics vs the real project file --------------
+# Godot: project.godot. Babylon.js: package.json + the code root (src/).
+if [ "$ENGINE_LC" = "babylonjs" ]; then
+  if [ ! -f package.json ]; then
+    skipped "project-file checks — no package.json in this repo (the Babylon.js project has not been scaffolded)"
+  else
+    if grep -qE '"@babylonjs/core"[[:space:]]*:' package.json; then
+      match "package.json depends on @babylonjs/core"
+    else
+      differs "engine.name is '$ENGINE' but package.json has no @babylonjs/core dependency. Nothing the babylonjs-* specialists write will resolve its imports."
+    fi
+
+    # Havok ships as its own WASM package; declaring it without the package
+    # sends the implementer to tune a physics plugin the build cannot load.
+    if [ -z "$PHYSICS" ]; then
+      skipped "physics — project.yaml has no engine.physics"
+    elif printf '%s' "$PHYSICS" | grep -qiE 'havok'; then
+      if grep -qE '"@babylonjs/havok"[[:space:]]*:' package.json; then
+        match "engine.physics ($PHYSICS) — @babylonjs/havok is in package.json"
+      else
+        differs "engine.physics is '$PHYSICS' but package.json has no @babylonjs/havok dependency. HavokPlugin cannot initialise without its WASM package."
+      fi
+    else
+      match "engine.physics ($PHYSICS)"
+    fi
+
+    # WebGPU is opt-in: Babylon's default `Engine` class is WebGL2, and WebGPU
+    # needs an explicit `WebGPUEngine`. Only meaningful once code exists.
+    if [ -z "$RENDERING" ]; then
+      skipped "rendering — project.yaml has no engine.rendering"
+    elif ! printf '%s' "$RENDERING" | grep -qiE 'webgpu'; then
+      skipped "rendering — engine.rendering '$RENDERING' uses Babylon's default WebGL2 Engine; there is no file setting to compare it against"
+    elif [ -z "$(find src -name '*.ts' -o -name '*.tsx' 2>/dev/null | head -1)" ]; then
+      skipped "rendering — engine.rendering declares WebGPU, but there is no TypeScript under src/ yet to compare it against"
+    elif grep -rqE 'WebGPUEngine' src 2>/dev/null; then
+      match "engine.rendering ($RENDERING) — WebGPUEngine is referenced under src/"
+    else
+      differs "engine.rendering is '$RENDERING' but nothing under src/ references WebGPUEngine. Babylon's default Engine class is WebGL2, so the game runs on a renderer the config does not declare."
+    fi
+  fi
+elif [ "$ENGINE_LC" != "godot" ]; then
+  skipped "project-file checks — implemented for Godot and Babylon.js only; $ENGINE has no single equivalent file this script can read"
 elif [ ! -f project.godot ]; then
   skipped "project-file checks — no project.godot in this repo"
 else
@@ -204,6 +273,23 @@ else
       differs "commands.build is '$BUILD_CMD' but there is no export_presets.cfg. Godot cannot resolve the preset, so this command fails the first time CI or /smoke-check runs it."
     fi
   fi
+
+  # npm-driven commands (Babylon.js): the "file" a command names is a
+  # package.json script. `npm test` is shorthand for `npm run test`.
+  RUN_CMD="$(yaml_block_value commands run)"
+  for _pair in "build:$BUILD_CMD" "test:$TEST_CMD" "run:$RUN_CMD"; do
+    _field="${_pair%%:*}"; _cmd="${_pair#*:}"
+    _script="$(printf '%s' "$_cmd" | sed -nE 's/^npm (run(-script)? )?([A-Za-z0-9:_-]+).*/\3/p')"
+    [ -z "$_script" ] && continue
+    case "$_script" in run|run-script) continue ;; esac
+    if [ ! -f package.json ]; then
+      differs "commands.$_field is '$_cmd' but there is no package.json. npm has no script to run, so this command fails the first time anything runs it."
+    elif pkg_has_script "$_script"; then
+      match "commands.$_field names npm script '$_script' and package.json defines it"
+    else
+      differs "commands.$_field is '$_cmd' but package.json defines no '$_script' script."
+    fi
+  done
 
   RUNNER="$(printf '%s' "$TEST_CMD" | grep -oE '[A-Za-z0-9_/.-]+\.(gd|cs|py|sh)' | head -1)"
   if [ -n "$RUNNER" ]; then

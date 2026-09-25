@@ -74,8 +74,8 @@ fi
 # Check if source code exists.
 #
 # All three code roots, not just `src/`. Per .claude/docs/directory-structure.md
-# `src/` is the Godot row; Unity builds from `Assets/` and Unreal from
-# `Source/`. Testing only `src/` meant a Unity project with a full codebase
+# `src/` is the Godot (and Babylon.js) row; Unity builds from `Assets/` and
+# Unreal from `Source/`. Testing only `src/` meant a Unity project with a full codebase
 # could still be greeted with "NEW PROJECT ... Run: /start".
 #
 # Tested directly rather than through resolve_code_root: this check runs before
@@ -83,7 +83,7 @@ fi
 # does not need the engine to be known.
 for _root in src Assets Source; do
   [ -d "$_root" ] || continue
-  SRC_CHECK=$(find "$_root" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | head -1)
+  SRC_CHECK=$(find "$_root" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | head -1)
   if [ -n "$SRC_CHECK" ]; then
     FRESH_PROJECT=false
     break
@@ -193,7 +193,7 @@ fi
 # --- Check 1: Substantial codebase but sparse design docs ---
 if [ -n "$CODE_ROOT" ] && [ -d "$CODE_ROOT" ]; then
   # Count source files (cross-platform, handles Windows paths)
-  SRC_FILES=$(find "$CODE_ROOT" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | wc -l)
+  SRC_FILES=$(find "$CODE_ROOT" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | wc -l)
 else
   SRC_FILES=0
 fi

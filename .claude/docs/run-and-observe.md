@@ -48,6 +48,7 @@ engine has a native way.
 | Godot 4 | `godot --path . --windowed --resolution 1280x720 <scene>.tscn` | `--write-movie <path>.png --quit-after <N>` | beside the given path, `<name>00000000.png` … | `--headless` | **none** |
 | Unity 6 | built player `.exe -screen-width 1280 -screen-height 720 -screen-fullscreen 0 --scene <Name>` | `ScreenCapture.CaptureScreenshot(<abs path>)` from a bootstrap script | the absolute path you pass | `-batchmode`, `-nographics` | one MonoBehaviour |
 | Unreal 5 | `MSYS_NO_PATHCONV=1 UnrealEditor.exe <Game>.uproject <MapURL> -game -windowed -ResX=1280 -ResY=720` | `HighResShot filename=<path>` console command | `Saved/Screenshots/Windows/` | `-nullrhi`, `-unattended` alone | one actor or `-ExecCmds` |
+| Babylon.js (`BabylonJS`) | `npm run dev` (Vite dev server, in the background) then a browser at `http://localhost:5173/?scene=<name>` | `npx playwright screenshot --viewport-size=1280,720 --wait-for-timeout=<ms> <url> <path>.png` | the path you pass | `NullEngine`, a jsdom test as a substitute | none (a `?scene=` reader in `src/main.ts` to reach a state) |
 
 ### Godot 4 — zero scaffold
 
@@ -114,6 +115,51 @@ an immediate quit can leave nothing on disk; a one-second delay before `quit`
 is enough. The Blueprint node `Take High Res Screenshot` is editor-only and
 does not work in a `-game` launch.
 
+### Babylon.js — dev server plus a browser screenshot
+
+`commands.run` (`npm run dev`) starts Vite's dev server; it does not open a
+window, and it does not exit. So the launch is two processes: the server in the
+background, then a browser pointed at it.
+
+```
+npm run dev &                         # Bash run_in_background; port 5173 per vite.config.ts
+# wait until http://localhost:5173/ answers (curl in a loop), then:
+npx playwright screenshot --viewport-size=1280,720 --wait-for-timeout=3000 \
+  "http://localhost:5173/?scene=shop" production/qa/evidence/shop-panel/01-shop-open.png
+# then stop the dev server
+```
+
+`playwright screenshot` is the Playwright CLI's one-shot capture — no test file,
+no config. It needs the browser binaries once (`npx playwright install
+chromium`); if they are absent, that is a `NOT VERIFIED` reason, not a pass.
+`--wait-for-timeout` is the "wait for real frames" step: give the scene time to
+load its assets and render (3 s is a floor for a small scene; more for large
+`.glb` loads). A page screenshot captures the composited canvas;
+`/setup-engine` §7.5 still creates the Engine with
+`preserveDrawingBuffer: true`, which is what a *canvas* readback
+(`engine.getRenderingCanvas().toDataURL()`, `Tools.CreateScreenshot`) needs if
+you capture from inside the page instead.
+
+**Headless is allowed here, with one caveat.** A headless browser still renders
+WebGL2 (through a software rasteriser when there is no GPU), so the frame is
+real — unlike Godot's `--headless` or Unreal's `-nullrhi`, which skip
+rendering. The caveat is WebGPU: a headless browser may not expose a WebGPU
+adapter, and a project whose `engine.rendering` is WebGPU then silently falls
+back to WebGL2 (if `src/main.ts` uses the `IsSupportedAsync` branch) or shows a
+blank page. **Say which renderer the screenshot came from** — have
+`src/main.ts` log which branch of the `IsSupportedAsync` check it took, or run headed
+(`npx playwright screenshot` has `--browser` / `--channel` for a real
+Chrome) — rather than presenting a WebGL2 frame as WebGPU evidence.
+
+**Reaching the state.** The URL is the launch argument: `src/main.ts` reads
+`new URLSearchParams(location.search)` (`?scene=shop&gold=500`) and builds that
+scene directly. Nothing ships this reader — `/dev-story` adds it the first
+time a story needs a state the title screen cannot show.
+
+Never substitute a Vitest run under `NullEngine` or jsdom for this step: those
+exist to run logic **without** a renderer, which is exactly what this step is
+not.
+
 ### Any engine — OS capture fallback
 
 On Windows, PowerShell with `System.Drawing` can `CopyFromScreen` into a bitmap
@@ -159,20 +205,28 @@ Say which half the screenshot covered.
 ## Reaching the state
 
 A screenshot of the title screen verifies nothing about depth 2. Either launch
-the scene/map directly (Godot scene arg, Unreal map URL, Unity `--scene`) or
+the scene/map directly (Godot scene arg, Unreal map URL, Unity `--scene`,
+Babylon.js `?scene=` query) or
 give the bootstrap a debug argument that sets state (`--gold=500 --depth=2`).
 Write stories so their surface is reachable one of those ways; a story that is
 not is a story that will be marked `NOT VERIFIED` every time.
 
 ## Finding the engine
 
-None of the three engines installs onto `PATH` on Windows. `engine.path` in
+None of the three editor-based engines installs onto `PATH` on Windows.
+(Babylon.js has no editor: it needs `node`/`npm` on `PATH` and
+`npm install` run, and nothing else.) `engine.path` in
 `project.yaml` is where the editor lives; resolve it before concluding "no
 engine on this machine". Absence of a path is not absence of an engine.
 
 ---
 
 *Commands and APIs above verified against the official Godot 4.7, Unity 6.3 LTS
-and Unreal 5.8 references on 2026-09-14. `docs/engine-reference/<engine>/` is
+and Unreal 5.8 references on 2026-09-14. The Babylon.js section is **not** from
+that verification: its Engine/WebGPU facts come from
+`docs/engine-reference/babylonjs/`, and the Playwright CLI flags
+(`screenshot`, `--viewport-size`, `--wait-for-timeout`) are unverified against a
+pinned Playwright version — run `npx playwright screenshot --help` before relying
+on them. `docs/engine-reference/<engine>/` is
 the project's pinned authority; check it before trusting a version-qualified
 claim here.*

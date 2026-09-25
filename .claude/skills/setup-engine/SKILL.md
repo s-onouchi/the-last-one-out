@@ -79,7 +79,7 @@ Read the design artifact for the resolved tier (see **Tier awareness** above):
 1. **What kind of game?** (2D, 3D, or both?)
 2. **Primary input method?** (keyboard/mouse, gamepad, touch, or mixed?)
 3. **Team size and experience?** (solo beginner, solo experienced, small team?)
-4. **Any strong language preferences?** (GDScript, C#, C++, visual scripting?)
+4. **Any strong language preferences?** (GDScript, C#, C++, TypeScript, visual scripting?)
 5. **Budget for engine licensing?** (free only, or commercial licenses OK?)
 
 ### Produce a recommendation
@@ -167,6 +167,7 @@ Probe for the binary (Bash), and treat failure as unknown, never as absent:
 | Godot | `godot --version`, else look for `godot`/`Godot_v*` on PATH or in the platform's usual install location |
 | Unity | `Unity -version`, else the Hub's editor directory |
 | Unreal | `UnrealEditor-Cmd -version`, else the launcher's install directory |
+| Babylon.js | No editor binary — Babylon.js is an npm package. Probe `node --version` and `npm --version` (the toolchain), then the resolved package: `npm ls @babylonjs/core --depth=0`, else the `version` field of `node_modules/@babylonjs/core/package.json`. Before `npm install` has run (the usual state at setup time), the package is `NOT DETERMINED`, not absent. |
 
 Then:
 - **Match** — say so in one line and continue.
@@ -474,17 +475,27 @@ Do NOT re-ask for the **engine, version or language** — reuse those decisions.
 
 ```yaml
 engine:
-  name: "<Godot|Unity|Unreal>"
+  name: "<Godot|Unity|Unreal|BabylonJS>"
   version: "<version from Section 3>"
-  language: "<GDScript|C#|C++|Blueprint>"
+  language: "<GDScript|C#|C++|Blueprint|TypeScript>"
   rendering: "<engine default — see table>"
   physics: "<engine default — see table>"
 ```
 
+> **Babylon.js is written `BabylonJS` — no dot, exactly this casing.**
+> `engine.name` is an enum (`yaml-helper.sh` rejects anything else), and
+> skills derive two paths from it by lowercasing: the reference directory
+> `docs/engine-reference/<engine>/` and the primary agent `<engine>-specialist`.
+> `BabylonJS` lowercases to `babylonjs`, which is both the directory and the
+> agent prefix; `Babylon.js` would produce `babylon.js-specialist`, an agent that
+> does not exist. The prose name `Babylon.js` stays correct everywhere else
+> (CLAUDE.md, `technical-preferences.md`). Its version is the `@babylonjs/core`
+> version without the product name — `9.5`, not `Babylon.js 9.5`.
+
 **On Godot these two values depend on the answers Section 2 already collected —
 the target platform and 2D-vs-3D — so do not pick them from the engine name
-alone.** On Unity and Unreal the table has a single `any` row and the engine name
-*is* sufficient; take those rows directly.
+alone.** On Unity, Unreal and Babylon.js the table has a single `any` row and the
+engine name *is* sufficient; take those rows directly.
 
 | Engine | Project shape | `rendering` default | `physics` default |
 |--------|---------------|---------------------|-------------------|
@@ -494,6 +505,7 @@ alone.** On Unity and Unreal the table has a single `any` row and the engine nam
 | Godot 4.x | 3D · non-web | Forward+ | Jolt |
 | Unity | any | URP | PhysX |
 | Unreal | any | Lumen + Nanite (deferred) | Chaos |
+| Babylon.js | any | WebGL2 | Havok |
 
 > **Why this table has a shape column and the others do not.** Both Godot
 > defaults were wrong for a 2D browser game, and both were wrong from data this
@@ -509,11 +521,22 @@ alone.** On Unity and Unreal the table has a single `any` row and the engine nam
 > If Section 2's platform answer was `Multiple platforms` **including** web, use
 > the web row: the renderer must work everywhere the game ships.
 
-> **Godot only — Unity and Unreal have one row each, keyed `any`.** Shape cannot
-> change `rendering` or `physics` for those two, so do **not** run the resolution
-> below for them: asking an operator a question whose answer you will discard is
-> exactly what §5.5.1 opens by forbidding. On Unity write `URP`/`PhysX` and on
-> Unreal write `Lumen + Nanite (deferred)`/`Chaos` straight from the table.
+> **Godot only — Unity, Unreal and Babylon.js have one row each, keyed `any`.**
+> Shape cannot change `rendering` or `physics` for those three, so do **not** run
+> the resolution below for them: asking an operator a question whose answer you
+> will discard is exactly what §5.5.1 opens by forbidding. On Unity write
+> `URP`/`PhysX`, on Unreal write `Lumen + Nanite (deferred)`/`Chaos`, and on
+> Babylon.js write `WebGL2`/`Havok` straight from the table.
+>
+> **Babylon.js — why `WebGL2` and not `WebGPU`.** Babylon's default `Engine`
+> class is WebGL2; WebGPU is opt-in through `WebGPUEngine`
+> (`docs/engine-reference/babylonjs/modules/rendering.md`). If the user has
+> *already said* they want WebGPU, write `WebGPU (WebGL2 fallback)` instead —
+> `project-coherence.sh` then checks that `src/` references `WebGPUEngine`.
+> `Havok` requires the `@babylonjs/havok` package (WASM) in `package.json`, which
+> the same script checks; note to the user that Havok needs WebAssembly SIMD
+> (`docs/engine-reference/babylonjs/packages/havok.md`). A 2D Babylon.js project
+> that uses no physics may write `none`.
 >
 > **Section 2 did not necessarily run — check before reading its answers.**
 > Target platform and 2D-vs-3D are collected under *Questions 2–6, only if no
@@ -545,6 +568,7 @@ alone.** On Unity and Unreal the table has a single `any` row and the engine nam
   language); the C# usage is recorded in `technical-preferences.md`.
 - For Unreal, write `language: "C++"` — or `"Blueprint"` only if the project is
   Blueprint-primary. Blueprint as a secondary tool does not change this value.
+- For Babylon.js, write `name: "BabylonJS"` and `language: "TypeScript"`.
 
 **`specialists` block** — copy directly from the routing table chosen in
 Section 5 (**A3** in `.claude/skills/setup-engine/references/godot-language-config.md` for Godot):
@@ -556,6 +580,7 @@ Section 5 (**A3** in `.claude/skills/setup-engine/references/godot-language-conf
 | Godot — Both | godot-gdscript-specialist | godot-shader-specialist | godot-specialist | [godot-csharp-specialist, godot-gdextension-specialist] |
 | Unity | unity-specialist | unity-shader-specialist | unity-ui-specialist | [unity-dots-specialist, unity-addressables-specialist] |
 | Unreal | unreal-specialist | unreal-specialist | ue-umg-specialist | [ue-gas-specialist, ue-blueprint-specialist, ue-replication-specialist] |
+| Babylon.js | babylonjs-specialist | babylonjs-shader-specialist | babylonjs-gui-specialist | [babylonjs-webxr-specialist] |
 
 ```yaml
 specialists:
@@ -569,14 +594,22 @@ specialists:
 `technical-preferences.md`). Use the column matching the engine and, for Godot,
 the language:
 
-| Field | Godot GDScript | Godot C# | Unity | Unreal |
-|-------|----------------|----------|-------|--------|
-| `classes` | PascalCase | PascalCase | PascalCase | PascalCase |
-| `variables` | snake_case | camelCase | camelCase | **PascalCase** |
-| `constants` | SCREAMING_SNAKE | PascalCase | SCREAMING_SNAKE | SCREAMING_SNAKE |
-| `signals` | past_tense | on_event_name | **PascalCase `On<Event>`** | **PascalCase `On<Event>`** |
-| `files` | snake_case | PascalCase | PascalCase | PascalCase |
-| `scenes` | snake_case | PascalCase | PascalCase | PascalCase |
+| Field | Godot GDScript | Godot C# | Unity | Unreal | Babylon.js |
+|-------|----------------|----------|-------|--------|------------|
+| `classes` | PascalCase | PascalCase | PascalCase | PascalCase | PascalCase |
+| `variables` | snake_case | camelCase | camelCase | **PascalCase** | camelCase |
+| `constants` | SCREAMING_SNAKE | PascalCase | SCREAMING_SNAKE | SCREAMING_SNAKE | SCREAMING_SNAKE |
+| `signals` | past_tense | on_event_name | **PascalCase `On<Event>`** | **PascalCase `On<Event>`** | **camelCase `on<Event>Observable`** |
+| `files` | snake_case | PascalCase | PascalCase | PascalCase | kebab-case |
+| `scenes` | snake_case | PascalCase | PascalCase | PascalCase | kebab-case |
+
+> **The Babylon.js column follows Section 5's TypeScript prose.** `signals` is
+> Babylon's `Observable<T>` convention (`onPointerObservable`,
+> `onBeforeRenderObservable`) — Babylon has no signals. `files` is `kebab-case`
+> because Section 5 says "kebab-case or camelCase — pick one"; if the user picks
+> camelCase, write that instead. `scenes` is a category mismatch like Unreal's:
+> a Babylon scene is TypeScript code (or a loaded `.glb`), not an editor scene
+> file, so it takes the `files` value.
 
 > **The Unreal column is sourced, not inherited from the table's generic shape.**
 > `variables: camelCase` and `signals: on_event_name` are the two rows that shape
@@ -667,6 +700,7 @@ naming:
 |--------|---------|--------|-------|---------|
 | Godot | `godot --headless --export-debug '<PRESET>'` **(ASK — do not default)** | `godot --headless --script tests/gdunit4_runner.gd` | `godot --path . --windowed --resolution 1280x720` | `godot --headless --quit-after 5` |
 | Unity | `Unity -batchmode -quit -projectPath . -buildTarget <TARGET>` **(ASK — do not default)** | `Unity -runTests -projectPath . -testPlatform PlayMode` | `Builds/<Target>/<Game>.exe -screen-width 1280 -screen-height 720 -screen-fullscreen 0` | `Unity -batchmode -quit -projectPath . -executeMethod SmokeCheck.Run` |
+| Babylon.js | `npm run build` | `npm test` | `npm run dev` | `npx tsc --noEmit` |
 
 > **`commands.run` is the one the run-and-observe step depends on.** It must
 > launch the **game**, windowed, at a fixed resolution — never the editor, and
@@ -693,6 +727,25 @@ naming:
 > truncates the value at the escape. A value containing BOTH quote types cannot
 > be represented for this parser; rewrite the command to drop one.
 
+**Babylon.js** — write the table row as-is; there is nothing to ask. The web
+build has a single target (Vite emits `dist/`), so `build` carries no platform
+placeholder. None of the four values contains a quote, so all take plain
+double-quoted scalars. Each `npm` command names a `package.json` script
+(`build`, `test`, `dev`), which §7.5 and `/test-setup` create —
+`project-coherence.sh` reports any that are missing. `run` starts the Vite dev
+server, not a window: `.claude/docs/run-and-observe.md` covers how the
+run-and-observe step opens it in a browser at 1280x720 and captures it. `smoke`
+is a whole-project type-check — it finishes in seconds and fails on the errors
+that would stop the page loading.
+
+```yaml
+commands:
+  build: "npm run build"
+  test: "npm test"
+  run: "npm run dev"
+  smoke: "npx tsc --noEmit"
+```
+
 **Godot / Unity** — write the table values directly, substituting the operator's
 answer for `<PRESET>` / `<TARGET>`. Godot's `build` contains a single quote, so it
 takes a double-quoted scalar (`Windows Desktop` below is the *example* answer, not
@@ -708,7 +761,8 @@ commands:
 
 > **Also write `engine.path` if the editor is not on `PATH`.** These commands name
 > the executable bare, which assumes it resolves — and on Windows none of the three
-> engines installs onto `PATH` by default. Ask for or probe the install location and
+> editor-based engines installs onto `PATH` by default. (Babylon.js has no editor;
+> its commands go through `npm`, so omit `engine.path` for it.) Ask for or probe the install location and
 > record it:
 >
 > ```yaml
@@ -857,7 +911,7 @@ Inform the user which category they're in and why.
 ### First: does a reference set already exist for this engine?
 
 **Check before doing anything else.** The template ships
-`docs/engine-reference/godot/`, `unity/` and `unreal/` **already populated**, so
+`docs/engine-reference/godot/`, `unity/`, `unreal/` and `babylonjs/` **already populated**, so
 "the directory exists and pins a version" is the state of *every* fresh project,
 not an edge case. Both branches below say "create", and following either one
 literally on a pre-populated directory either overwrites curated content or
@@ -869,7 +923,8 @@ Read `docs/engine-reference/<engine>/VERSION.md` and compare its
 - **No directory, or no `VERSION.md`** → create, using the risk branch below.
 - **Same version** → nothing to do. Refresh `Last Docs Verified` only if you
   actually re-verified against the docs this run. Do not restamp a date you did
-  not check.
+  not check. **Still add the `Installed at pin time` row from Section 3 if the
+  file has none** — `project-coherence.sh` reports its absence as `[DIFFERS]`.
 - **Directory pins an OLDER version than the one chosen** → **update, do not
   replace.** This is the common case.
   1. Edit `VERSION.md` in place: new **Engine Version**, new **Project Pinned**
@@ -1016,6 +1071,137 @@ strings are stable across Godot 4.x, but "stable in the versions I know" is not
 the same as "checked against the version you pinned", and only the run
 establishes the latter.
 
+### Babylon.js — write the Vite project if `package.json` is absent
+
+**Never overwrite an existing `package.json`, `tsconfig.json`, `vite.config.ts`
+or `index.html`.** If `package.json` is already there, say so, confirm it has
+`dev`, `build` and `test`-able scripts matching §5.5.1's `commands` (add missing
+scripts only with approval), and skip to Section 8.
+
+A Vite + TypeScript project is a handful of plain-text files, so unlike Unity
+and Unreal it *can* be written here — but **no version number is typed from
+recall.** The files carry no `dependencies`; `npm install` writes them, resolving
+the pinned version itself. Show the proposed files, then ask: *"May I create
+`package.json`, `tsconfig.json`, `vite.config.ts`, `index.html` and
+`src/main.ts`, then run `npm install`?"* On approval, write:
+
+`package.json` (`name` from the brief's working title, else the repo directory
+name, lowercased and hyphenated):
+
+```json
+{
+  "name": "<project-name>",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  }
+}
+```
+
+`tsconfig.json` — the flags are the ones
+`docs/engine-reference/babylonjs/current-best-practices.md` §Project Setup
+mandates (`strict`, `noUncheckedIndexedAccess`) or recommends:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "tests"]
+}
+```
+
+`vite.config.ts`:
+
+```typescript
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  server: { port: 5173, strictPort: true },
+});
+```
+
+`index.html` — one full-window canvas and the module entry:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><project name></title>
+    <style>html, body { margin: 0; height: 100%; overflow: hidden; } #renderCanvas { width: 100%; height: 100%; display: block; touch-action: none; }</style>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+```
+
+`src/main.ts` — the Engine/Scene pattern from `current-best-practices.md`
+§Scene Construction, nothing more. On `WebGPU (WebGL2 fallback)` use that file's
+`WebGPUEngine.IsSupportedAsync` branch (`modules/rendering.md`) instead of a bare
+`Engine`:
+
+```typescript
+import { Engine } from "@babylonjs/core/Engines/engine";
+import { Scene } from "@babylonjs/core/scene";
+import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
+import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+
+const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
+const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+const scene = new Scene(engine);
+const camera = new FreeCamera("camera", new Vector3(0, 5, -10), scene);
+camera.setTarget(Vector3.Zero());
+camera.attachControl(canvas, true);
+new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+
+engine.runRenderLoop(() => scene.render());
+window.addEventListener("resize", () => engine.resize());
+```
+
+`preserveDrawingBuffer: true` is kept deliberately: it is what lets the
+run-and-observe step read the canvas back (`.claude/docs/run-and-observe.md`).
+
+Then install, letting npm resolve and record every version:
+
+```bash
+npm install --save-dev vite typescript
+npm install @babylonjs/core@<engine.version>
+npm install @babylonjs/havok          # only when engine.physics is Havok
+```
+
+**Leave the scene's content, a scene-select URL parameter, and Havok
+initialisation to `/dev-story`.** How Havok's `.wasm` is served under Vite is
+not covered by `docs/engine-reference/babylonjs/packages/havok.md`; record it as
+`NOT SOURCEABLE` rather than adding bundler config from recall.
+
+**Then verify, and report what the verification actually was.** If `npm` was
+found in Section 3, run `npm run build` and report the result. If `npm` is not
+available, or `npm install` failed, write **`Babylon.js project NOT VERIFIED —
+<reason>`**.
+
+No `test` script is written here — `/test-setup` adds it with Vitest. Until
+then Section 8.5 reports `commands.test` (`npm test`) as `[DIFFERS]`; that is
+expected, and the fix is `/test-setup`, not a placeholder script.
+
 ### Unity and Unreal — instruct, do not fabricate
 
 A Unity project and an `.uproject` are editor-generated and span many files,
@@ -1040,7 +1226,8 @@ skill knowing whether a runnable project exists.
 > would be written here and read by nothing, which is a dead setting — the same
 > writer-without-reader defect the config gates exist to catch. The filesystem is
 > the source of truth: any skill that needs to know globs for `project.godot`,
-> `*.uproject`, or `ProjectSettings/ProjectVersion.txt`.
+> `*.uproject`, `ProjectSettings/ProjectVersion.txt`, or (Babylon.js) a
+> `package.json` depending on `@babylonjs/core`.
 
 ---
 
@@ -1085,15 +1272,18 @@ bash .claude/scripts/project-coherence.sh
 ```
 
 It compares `project.yaml` against `docs/engine-reference/<engine>/VERSION.md`,
-against `project.godot`, and against the engine binary actually on PATH, and it
-checks that the files `commands.build` and `commands.test` name exist.
+against `project.godot` (Babylon.js: `package.json` and `src/`), and against the
+engine binary actually on PATH (Babylon.js: the `@babylonjs/core` npm resolved
+into `node_modules/`), and it checks that the files `commands.build` and
+`commands.test` name exist (Babylon.js: that every `npm` command's script is
+defined in `package.json`).
 
 **Report every `[DIFFERS]` line to the user and resolve it before finishing.**
 Each one means two files this skill just wrote disagree, or describe something
 that is not there.
 
 **`[NOT CHECKED]` is not a pass.** Each such line names why a comparison could
-not be made -- an absent binary, a missing `project.godot`. Say which ones
+not be made -- an absent binary, a missing `project.godot`, no `node_modules/`. Say which ones
 applied. A comparison that could not run has not established agreement.
 
 The script emits observations and never a verdict, per the convention in
@@ -1250,7 +1440,7 @@ After setup is complete, output:
 Engine Setup Complete
 =====================
 Engine:          [name] [version]
-Language:        [GDScript | C# | GDScript + C# | C# | C++ + Blueprint]
+Language:        [GDScript | C# | GDScript + C# | C# | C++ + Blueprint | TypeScript]
 Knowledge Risk:  [LOW/MEDIUM/HIGH]
 Reference Docs:  [created/skipped]
 CLAUDE.md:       [updated]

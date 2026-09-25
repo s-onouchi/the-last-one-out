@@ -85,6 +85,17 @@ tp_configured() {
   grep -qE "^[[:space:]]*-[[:space:]]+\*\*($_TP_KEYS)\*\*:[[:space:]]*[^[:space:]\[]" "$TP" 2>/dev/null
 }
 
+# The legacy file holds the prose engine name (`Babylon.js 9.5`); the
+# `engine.name` enum in yaml-helper.sh holds `BabylonJS`, the spelling skills
+# lowercase into docs/engine-reference/babylonjs/ and babylonjs-specialist.
+# Every other engine's first word already is its enum value.
+canon_engine() {
+  case "$1" in
+    [Bb]abylon.[Jj][Ss]|[Bb]abylon[Jj][Ss]) printf 'BabylonJS' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 # --- technical-preferences.md parsing ---------------------------------------
 
 # tp_get <section> <key> -> value, or empty when absent/unconfigured.
@@ -206,7 +217,7 @@ legacy_conflict() {
     [ -z "$_lc" ] || grep -qE "^[[:space:]]*review_mode:[[:space:]]*\"?$(re_quote "$_lc")\"?" "$PY" || return 0
   fi
   if [ -f "$TP" ] && tp_configured; then
-    _lc=$(tp_get "Engine & Language" "Engine" | awk '{print $1}')
+    _lc=$(canon_engine "$(tp_get "Engine & Language" "Engine" | awk '{print $1}')")
     [ -z "$_lc" ] || grep -qE "^[[:space:]]*name:[[:space:]]*\"?$(re_quote "$_lc")\"?" "$PY" || return 0
   fi
   return 1
@@ -270,7 +281,7 @@ if [ "$MODE" = "finalize" ]; then
     grep -qE "^[[:space:]]*review_mode:[[:space:]]*\"?$(re_quote "$want")\"?" "$PY" || FAILED="$FAILED $REVIEW_TXT"
   fi
   if [ -f "$TP" ] && tp_configured; then
-    want=$(tp_get "Engine & Language" "Engine" | awk '{print $1}')
+    want=$(canon_engine "$(tp_get "Engine & Language" "Engine" | awk '{print $1}')")
     [ -z "$want" ] || grep -qE "^[[:space:]]*name:[[:space:]]*\"?$(re_quote "$want")\"?" "$PY" || FAILED="$FAILED $TP"
   fi
   if [ -n "$FAILED" ]; then
@@ -337,7 +348,7 @@ esac
 # chose a review mode in v1.0, the file exists and its value is preserved above.
 
 ENGINE_RAW=$(tp_get "Engine & Language" "Engine")
-ENGINE_NAME=$(printf '%s' "$ENGINE_RAW" | awk '{print $1}')
+ENGINE_NAME=$(canon_engine "$(printf '%s' "$ENGINE_RAW" | awk '{print $1}')")
 ENGINE_VER=$(printf '%s' "$ENGINE_RAW" | awk '{if (NF>1 && $NF ~ /^[0-9]+(\.[0-9]+)*[A-Za-z0-9]*$/) print $NF}')
 LANG=$(tp_get "Engine & Language" "Language")
 RENDER=$(tp_get "Engine & Language" "Rendering")
