@@ -6,8 +6,8 @@
 > **Author**: [ux-designer]
 > **Last Updated**: [Date]
 > **Version**: [1.0]
-> **Engine**: [Godot 4.6 / Unity 6 / Unreal Engine 5]
-> **UI Framework**: [Godot Control nodes / Unity UI Toolkit / Unreal UMG]
+> **Engine**: [Godot 4.6 / Unity 6 / Unreal Engine 5 / Babylon.js 9.5]
+> **UI Framework**: [Godot Control nodes / Unity UI Toolkit / Unreal UMG / Babylon GUI (or HTML overlay)]
 > **Related Documents**:
 > - `design/art/art-bible.md` — visual standards (colors, typography, iconography)
 > - `design/accessibility-requirements.md` — accessibility commitments per feature

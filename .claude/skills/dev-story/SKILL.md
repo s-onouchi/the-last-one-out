@@ -294,6 +294,7 @@ The full roster, for reference when no `specialists` block exists:
 | Godot 4 | `godot-specialist`, `godot-gdscript-specialist`, `godot-csharp-specialist`, `godot-shader-specialist`, `godot-gdextension-specialist` |
 | Unity | `unity-specialist`, `unity-ui-specialist`, `unity-shader-specialist`, `unity-dots-specialist`, `unity-addressables-specialist` |
 | Unreal Engine | `unreal-specialist`, `ue-gas-specialist`, `ue-blueprint-specialist`, `ue-umg-specialist`, `ue-replication-specialist` |
+| Babylon.js | `babylonjs-specialist`, `babylonjs-webxr-specialist`, `babylonjs-shader-specialist`, `babylonjs-gui-specialist` |
 
 > **Do not pick from this table when `specialists` is set.** The table lists what
 > *exists* for an engine; the block records what this project *chose*. Reading the

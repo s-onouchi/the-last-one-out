@@ -97,3 +97,4 @@ falling back to the defaults above when it is absent.
   - **Godot**: `godot --headless --script tests/gdunit4_runner.gd`
   - **Unity**: `game-ci/unity-test-runner@v4` (GitHub Actions)
   - **Unreal**: headless runner with `-nullrhi` flag
+  - **Babylon.js**: `npm test` (Vitest with jsdom); optional `npm run test:e2e` (Playwright)

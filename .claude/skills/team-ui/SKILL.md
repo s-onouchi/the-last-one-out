@@ -90,7 +90,7 @@ Use the `Agent` tool to spawn each team member as a subagent:
 - `subagent_type: ux-designer` — User flows, wireframes, accessibility, input handling
 - `subagent_type: ui-programmer` — UI framework, screens, widgets, data binding
 - `subagent_type: art-director` — Visual style, layout polish, art bible consistency
-- `subagent_type: [UI engine specialist]` — Engine-specific UI pattern validation (e.g., unity-ui-specialist, ue-umg-specialist, godot-specialist)
+- `subagent_type: [UI engine specialist]` — Engine-specific UI pattern validation (e.g., unity-ui-specialist, ue-umg-specialist, godot-specialist, babylonjs-gui-specialist)
 - `subagent_type: accessibility-specialist` — Accessibility compliance audit
 
 **Brief each agent — do not dump context.** Read the shared inputs **once** and pass a distilled brief inline: the lines each agent actually needs, never a file path for a document you have already read (an agent handed a path re-reads the whole file). Pass a path only for a document you have not read and only that agent needs.
@@ -178,7 +178,7 @@ Delegate to **art-director**:
 ### Phase 3: Implementation
 
 Before implementation begins, spawn the **engine UI specialist** (`specialists.ui` from `project.yaml`; if absent, the UI Specialist line of `## Engine Specialists` in `.claude/docs/technical-preferences.md`) to review the UX spec and visual design spec for engine-specific implementation guidance:
-- Which engine UI framework should be used for this screen? (e.g., UI Toolkit vs UGUI in Unity, Control nodes vs CanvasLayer in Godot, UMG vs CommonUI in Unreal)
+- Which engine UI framework should be used for this screen? (e.g., UI Toolkit vs UGUI in Unity, Control nodes vs CanvasLayer in Godot, UMG vs CommonUI in Unreal, Babylon GUI vs HTML overlay vs 3D GUI in Babylon.js)
 - Any engine-specific gotchas for the proposed layout or interaction patterns?
 - Recommended widget/node structure for the engine?
 - Output: engine UI implementation notes to hand off to ui-programmer before they begin

@@ -46,7 +46,8 @@ A test framework installed at sprint four costs 3 sprints.
    - Glob `tests/unit/` and `tests/integration/` — do subdirectories exist?
    - Glob `.github/workflows/` — does a CI workflow file exist?
    - Glob `tests/gdunit4_runner.gd` (Godot) or `tests/EditMode/` (Unity) or
-     `Source/Tests/` (Unreal) for engine-specific artifacts.
+     `Source/Tests/` (Unreal) or `vitest.config.ts` / `tests/unit/*.test.ts`
+     (Babylon.js) for engine-specific artifacts.
 
 3. **Report findings**:
    - "Engine: [engine]. Test directory: [found / not found]. CI workflow: [found / not found]."
@@ -231,6 +232,78 @@ Test class naming: F[SystemName]Test
 Test category naming: "MyGame.[System].[Feature]"
 ```
 
+#### Babylon.js (`Engine: Babylon.js`)
+
+Create `vitest.config.ts` at project root:
+```typescript
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["tests/setup.ts"],
+    include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      exclude: ["node_modules/", "tests/", "**/*.config.ts"],
+    },
+  },
+});
+```
+
+Create `tests/setup.ts`:
+```typescript
+import { vi } from "vitest";
+
+// rAF stubs for headless tests
+global.requestAnimationFrame = vi.fn((cb) => setTimeout(cb, 16) as unknown as number);
+global.cancelAnimationFrame = vi.fn((id) => clearTimeout(id as unknown as NodeJS.Timeout));
+```
+
+Create `tests/unit/README.md`:
+```markdown
+# Unit Tests
+Pure logic tests — formulas, state machines, data validation.
+No Babylon.js Engine instance; mock or extract pure logic from engine code.
+Naming: `[system]_[feature].test.ts` (e.g., `combat_damage.test.ts`)
+```
+
+Create `tests/integration/README.md`:
+```markdown
+# Integration Tests
+Cross-system tests that may instantiate a Babylon.js Engine.
+Use Vitest browser mode for tests requiring real WebGL.
+Run via: `npm run test:integration`
+```
+
+Create `tests/e2e/README.md` (optional — only if Playwright is added):
+```markdown
+# End-to-End Tests (Playwright)
+User-flow tests against the running game in a real browser.
+Use for visual regression, XR session tests, full gameplay flows.
+Run via: `npm run test:e2e`
+```
+
+Add to `package.json` scripts:
+```json
+"scripts": {
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:integration": "vitest run tests/integration --browser.enabled",
+  "test:e2e": "playwright test"
+}
+```
+
+Note in the README: **Installing Vitest and Babylon.js**
+```
+1. npm install --save-dev vitest jsdom @vitest/coverage-v8
+2. (Optional, for browser-mode tests) npm install --save-dev @vitest/browser playwright
+3. (Optional, for E2E) npm install --save-dev @playwright/test && npx playwright install
+4. Verify: npm test
+```
+
 ---
 
 ## Phase 4: Create CI/CD Workflow
@@ -369,6 +442,91 @@ jobs:
 
 Note: UE CI requires a self-hosted runner with Unreal Editor installed.
 Set the `UE_EDITOR_PATH` environment variable on the runner.
+
+### Babylon.js
+
+Create `.github/workflows/tests.yml`:
+
+```yaml
+name: Automated Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Vitest Tests (Babylon.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Type Check
+        run: npx tsc --noEmit
+
+      - name: Run Unit Tests
+        run: npm test
+
+      - name: Upload Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+```
+
+Optional second job for E2E (only if Playwright is configured):
+
+```yaml
+  e2e:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+```
+
+Note: Babylon.js unit tests run headless via Vitest with jsdom. WebGL is
+mocked at this layer. For tests that require real WebGL, use Vitest browser
+mode (Playwright or WebdriverIO under the hood) or the optional Playwright
+job above.
 
 ---
 
