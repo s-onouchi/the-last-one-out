@@ -1,11 +1,19 @@
 ---
 name: test-setup
-description: "Scaffold the test framework and CI/CD pipeline for the project's engine. Creates the tests/ directory structure, engine-specific test runner configuration, and GitHub Actions workflow. Run once during Technical Setup phase before the first sprint begins."
+description: "Scaffold the test framework and CI — tests/ directory, engine test runner, GitHub Actions workflow. Once, before the first sprint."
 argument-hint: "[force]"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Bash, Write
+allowed-tools: Read, Glob, Grep, Bash, Write, Bash(bash "*/.claude/skills/test-setup/../../hooks/yaml-helper.sh" resolve_config *)
 model: sonnet
 ---
+
+!`bash "${CLAUDE_SKILL_DIR}/../../hooks/yaml-helper.sh" resolve_config --keys automation`
+
+**Automation mode**: Resolve `modes.automation` (`project.local.yaml` →
+`project.yaml` → default `collaborative`). Every `AskUserQuestion` call and
+every file write follows `.claude/docs/automation-modes.md`
+(collaborative asks always · guided major-only · autonomous logs and proceeds;
+`automation_always_ask` categories always prompt).
 
 # Test Setup
 
@@ -25,8 +33,12 @@ A test framework installed at sprint four costs 3 sprints.
 ## Phase 1: Detect Engine and Existing State
 
 1. **Read engine config**:
-   - Read `.claude/docs/technical-preferences.md` and extract the `Engine:` value.
-   - If engine is not configured (`[TO BE CONFIGURED]`), stop:
+   - Read `engine.name` from `project.yaml`; if that key is absent or empty
+     (including when `project.yaml` has no `engine:` block), fall back to the
+     `Engine:` value in `.claude/docs/technical-preferences.md`.
+   - If neither source yields a configured engine (project.yaml `engine.name`
+     absent/empty and technical-preferences.md shows `[TO BE CONFIGURED]` or is
+     missing), stop:
      "Engine not configured. Run `/setup-engine` first, then re-run `/test-setup`."
 
 2. **Check for existing test infrastructure**:
@@ -34,7 +46,8 @@ A test framework installed at sprint four costs 3 sprints.
    - Glob `tests/unit/` and `tests/integration/` — do subdirectories exist?
    - Glob `.github/workflows/` — does a CI workflow file exist?
    - Glob `tests/gdunit4_runner.gd` (Godot) or `tests/EditMode/` (Unity) or
-     `Source/Tests/` (Unreal) for engine-specific artifacts.
+     `Source/Tests/` (Unreal) or `vitest.config.ts` / `tests/unit/**/*_test.ts`
+     (Babylon.js) for engine-specific artifacts.
 
 3. **Report findings**:
    - "Engine: [engine]. Test directory: [found / not found]. CI workflow: [found / not found]."
@@ -61,8 +74,10 @@ tests/
   unit/           — Isolated unit tests for formulas, state, and logic
   integration/    — Cross-system tests and save/load round-trips
   smoke/          — Critical path test list (15-minute manual gate)
-  evidence/       — Screenshot and manual test sign-off records
   README.md       — Test framework documentation
+
+production/qa/
+  evidence/       — Screenshot and manual test sign-off records
 
 [Engine-specific files — see per-engine details below]
 
@@ -74,7 +89,11 @@ Estimated time: ~5 minutes to create all files.
 Ask: "May I create these files? I will not overwrite any test files that
 already exist at these paths."
 
-Do not proceed without approval.
+**At `collaborative` and `guided`** — do not proceed without approval. These are
+**new** files, and `automation-modes.md:81` gates new-file writes in `guided` too,
+so the answer is the same in both modes. **At `autonomous`** — create them and log
+the decision; do not block. An unconditional gate here would read as "block even
+in autonomous" and contradict this skill's own header.
 
 ---
 
@@ -88,7 +107,7 @@ After approval, create the following files:
 # Test Infrastructure
 
 **Engine**: [engine name + version]
-**Test Framework**: [GdUnit4 | Unity Test Framework | UE Automation]
+**Test Framework**: [GdUnit4 | Unity Test Framework | UE Automation | Vitest (+ Playwright)]
 **CI**: `.github/workflows/tests.yml`
 **Setup date**: [date]
 
@@ -99,8 +118,19 @@ tests/
   unit/           # Isolated unit tests (formulas, state machines, logic)
   integration/    # Cross-system and save/load tests
   smoke/          # Critical path test list for /smoke-check gate
+```
+
+```
+production/qa/
   evidence/       # Screenshot logs and manual test sign-off records
 ```
+
+> **Manual evidence lives under `production/qa/evidence/`, not `tests/`.** That is
+> where every consumer reads it — `/smoke-check`, `/test-evidence-review`,
+> `/qa-plan`, and the evidence table in `.claude/docs/coding-standards.md`. This
+> scaffold and this skill's completion summary must name the same path: listing
+> `tests/evidence/` here while the summary reports `production/qa/evidence/`
+> creates a directory nothing reads and skips the one everything does.
 
 ## Running Tests
 
@@ -118,8 +148,8 @@ tests/
 |---|---|---|
 | Logic | Automated unit test — must pass | `tests/unit/[system]/` |
 | Integration | Integration test OR playtest doc | `tests/integration/[system]/` |
-| Visual/Feel | Screenshot + lead sign-off | `tests/evidence/` |
-| UI | Manual walkthrough OR interaction test | `tests/evidence/` |
+| Visual/Feel | Screenshot + lead sign-off | `production/qa/evidence/` |
+| UI | Manual walkthrough OR interaction test | `production/qa/evidence/` |
 | Config/Data | Smoke check pass | `production/qa/smoke-*.md` |
 
 ## CI
@@ -200,6 +230,95 @@ Or headlessly: UnrealEditor -nullrhi -ExecCmds="Automation RunTests MyGame.; Qui
 
 Test class naming: F[SystemName]Test
 Test category naming: "MyGame.[System].[Feature]"
+```
+
+#### Babylon.js (`engine.name: BabylonJS`, legacy `Engine: Babylon.js`)
+
+**`package.json` must already exist** — `/setup-engine` §7.5 scaffolds the Vite
+project. If it is absent, stop and send the user back there; do not create a
+`package.json` holding only the test scripts below, because `commands.build` and
+`commands.run` (`npm run build`, `npm run dev`) would then name scripts that do
+not exist. **Merge** the scripts below into the existing `scripts` block; never
+replace it.
+
+Create `vitest.config.ts` at project root:
+```typescript
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["tests/setup.ts"],
+    // `*_test.ts` is the framework-wide naming rule (coding-standards.md) and
+    // what /story-done, /regression-suite and /architecture-review glob for.
+    // Vitest's default include matches only `*.test.ts`, so both are listed.
+    include: [
+      "tests/unit/**/*_test.ts",
+      "tests/integration/**/*_test.ts",
+      "tests/unit/**/*.test.ts",
+      "tests/integration/**/*.test.ts",
+    ],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      exclude: ["node_modules/", "tests/", "**/*.config.ts"],
+    },
+  },
+});
+```
+
+Create `tests/setup.ts`:
+```typescript
+import { vi } from "vitest";
+
+// rAF stubs for headless tests
+globalThis.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => setTimeout(() => cb(performance.now()), 16) as unknown as number);
+globalThis.cancelAnimationFrame = vi.fn((id: number) => clearTimeout(id));
+```
+
+Create `tests/unit/README.md`:
+```markdown
+# Unit Tests
+Pure logic tests — formulas, state machines, data validation.
+No rendering Engine instance — use `NullEngine` when a `Scene` is needed, or
+extract pure logic from engine code.
+Naming: `[system]_[feature]_test.ts` (e.g., `combat_damage_test.ts`) — the
+framework-wide rule; `vitest.config.ts` includes it explicitly.
+```
+
+Create `tests/integration/README.md`:
+```markdown
+# Integration Tests
+Cross-system tests that may instantiate a Babylon.js Engine.
+Use Vitest browser mode for tests requiring real WebGL.
+Run via: `npm run test:integration`
+```
+
+Create `tests/e2e/README.md` (optional — only if Playwright is added):
+```markdown
+# End-to-End Tests (Playwright)
+User-flow tests against the running game in a real browser.
+Use for visual regression, XR session tests, full gameplay flows.
+Run via: `npm run test:e2e`
+```
+
+Add to `package.json` scripts:
+```json
+"scripts": {
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:integration": "vitest run tests/integration --browser.enabled",
+  "test:e2e": "playwright test"
+}
+```
+
+Note in the README: **Installing Vitest and Babylon.js**
+```
+1. npm install --save-dev vitest jsdom @vitest/coverage-v8
+2. (Optional, for browser-mode tests) npm install --save-dev @vitest/browser playwright
+3. (Optional, for E2E) npm install --save-dev @playwright/test && npx playwright install
+4. Verify: npm test
 ```
 
 ---
@@ -341,6 +460,91 @@ jobs:
 Note: UE CI requires a self-hosted runner with Unreal Editor installed.
 Set the `UE_EDITOR_PATH` environment variable on the runner.
 
+### Babylon.js
+
+Create `.github/workflows/tests.yml`:
+
+```yaml
+name: Automated Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Vitest Tests (Babylon.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Type Check
+        run: npx tsc --noEmit
+
+      - name: Run Unit Tests
+        run: npm test
+
+      - name: Upload Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+```
+
+Optional second job for E2E (only if Playwright is configured):
+
+```yaml
+  e2e:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+```
+
+Note: Babylon.js unit tests run headless via Vitest with jsdom. WebGL is
+mocked at this layer. For tests that require real WebGL, use Vitest browser
+mode (Playwright or WebdriverIO under the hood) or the optional Playwright
+job above.
+
 ---
 
 ## Phase 5: Create Smoke Test Seed
@@ -391,7 +595,7 @@ Files created:
 - tests/unit/ (directory)
 - tests/integration/ (directory)
 - tests/smoke/critical-paths.md
-- tests/evidence/ (directory)
+- production/qa/evidence/ (directory)
 [engine-specific files]
 - .github/workflows/tests.yml
 

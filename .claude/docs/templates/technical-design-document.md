@@ -12,9 +12,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine** | [e.g. Godot 4.6 / Unity 6 / Unreal Engine 5.4] |
-| **APIs Depended On** | [Specific classes/methods/nodes used, version-pinned — e.g. `CharacterBody3D.move_and_slide() (Godot 4.x)`] |
-| **References Consulted** | [engine-reference docs read before writing this — e.g. `docs/engine-reference/godot/modules/physics.md`] |
+| **Engine** | [e.g. Godot 4.6 / Unity 6 / Unreal Engine 5.4 / Babylon.js 9.5] |
+| **APIs Depended On** | [Specific classes/methods/nodes used, version-pinned — e.g. `CharacterBody3D.move_and_slide() (Godot 4.x)`, `HavokPlugin (Babylon.js 9.x)`] |
+| **References Consulted** | [engine-reference docs read before writing this — e.g. `docs/engine-reference/godot/modules/physics.md`, `docs/engine-reference/babylonjs/modules/webxr.md`] |
 | **Post-Cutoff Features Used** | [Features from engine versions beyond LLM training cutoff, or "None"] |
 | **Unverified Assumptions** | [API behaviours assumed but not yet tested against the target version, or "None"] |
 | **Engine Upgrade Risk** | [LOW / MEDIUM / HIGH — how fragile is this design if the engine version changes?] |

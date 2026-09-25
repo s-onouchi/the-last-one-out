@@ -60,6 +60,7 @@ domain lead) should delegate to specialists.
 | `unreal-specialist` | Unreal Engine 5 | Sonnet | Blueprint vs C++, GAS overview, UE subsystems, Unreal optimization |
 | `unity-specialist` | Unity | Sonnet | MonoBehaviour vs DOTS, Addressables, URP/HDRP, Unity optimization |
 | `godot-specialist` | Godot 4 | Sonnet | GDScript patterns, node/scene architecture, signals, Godot optimization |
+| `babylonjs-specialist` | Babylon.js 9 | Sonnet | TypeScript scene graph, ESM imports, asset loading, render loop, Havok physics, Vite/tsconfig |
 
 ### Unreal Engine Sub-Specialists
 
@@ -87,3 +88,11 @@ domain lead) should delegate to specialists.
 | `godot-csharp-specialist` | C# / .NET | Sonnet | .NET patterns, [Signal] delegates, async, nullable types, type-safe node access |
 | `godot-shader-specialist` | Shaders/Rendering | Sonnet | Godot shading language, visual shaders, particles, post-processing |
 | `godot-gdextension-specialist` | GDExtension | Sonnet | C++/Rust bindings, native performance, custom nodes, build systems |
+
+### Babylon.js Sub-Specialists
+
+| Agent | Subsystem | Model | When to Use |
+| ---- | ---- | ---- | ---- |
+| `babylonjs-webxr-specialist` | WebXR | Sonnet | WebXR sessions, hand tracking, depth sensing, anchors, Quest/Vision Pro |
+| `babylonjs-shader-specialist` | Shaders/Rendering | Sonnet | NodeMaterial v2, GLSL/WGSL, post-processing, particle shaders |
+| `babylonjs-gui-specialist` | GUI | Sonnet | Babylon GUI (ADT, Controls, 3D GUI for XR, Node GUI), in-scene UI patterns |

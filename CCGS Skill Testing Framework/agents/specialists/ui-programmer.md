@@ -23,7 +23,7 @@ No gate IDs assigned.
 **Input:** "Implement the inventory screen from the UX spec in `design/ux/inventory-flow.md`."
 **Expected behavior:**
 - Reads the UX spec before producing any code
-- Produces implementation using the project's configured UI framework (UI Toolkit, UGUI, UMG, or Godot Control nodes)
+- Produces implementation using the project's configured UI framework (UI Toolkit, UGUI, UMG, Godot Control nodes, or HTML/CSS overlay on a Babylon.js project)
 - Implements all states defined in the spec (default, hover, selected, empty-slot, locked-slot)
 - Binds inventory data to UI elements via the project's data model, not hardcoded values
 - Includes doc comments on public UI API per coding standards

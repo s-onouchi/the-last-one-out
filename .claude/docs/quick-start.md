@@ -3,10 +3,10 @@
 ## What Is This?
 
 This is a complete Claude Code agent architecture for game development. It
-organizes 49 specialized AI agents into a studio hierarchy that mirrors
+organizes 53 specialized AI agents into a studio hierarchy that mirrors
 real game development teams, with defined responsibilities, delegation
 rules, and coordination protocols. It includes engine-specialist agents
-for Godot, Unity, and Unreal — each with dedicated sub-specialists for
+for Godot, Unity, Unreal, and Babylon.js — each with dedicated sub-specialists for
 major engine subsystems. All design agents and templates are grounded in
 established game design theory (MDA Framework, Self-Determination Theory,
 Flow State, Bartle Player Types). Use whichever engine set matches your project.
@@ -56,6 +56,7 @@ Ask yourself: "What department would handle this in a real studio?"
 | Get Unreal Engine advice | `unreal-specialist` |
 | Get Unity advice | `unity-specialist` |
 | Get Godot advice | `godot-specialist` |
+| Get Babylon.js advice | `babylonjs-specialist` |
 | Design GAS abilities/effects | `ue-gas-specialist` |
 | Define BP/C++ boundaries | `ue-blueprint-specialist` |
 | Implement UE replication | `ue-replication-specialist` |
@@ -68,6 +69,9 @@ Ask yourself: "What department would handle this in a real studio?"
 | Write Godot C# code | `godot-csharp-specialist` |
 | Create Godot shaders | `godot-shader-specialist` |
 | Build GDExtension modules | `godot-gdextension-specialist` |
+| Set up Babylon.js WebXR | `babylonjs-webxr-specialist` |
+| Author Babylon NodeMaterial / shaders | `babylonjs-shader-specialist` |
+| Build Babylon GUI / 3D GUI | `babylonjs-gui-specialist` |
 | Plan live events and seasons | `live-ops-designer` |
 | Write patch notes for players | `community-manager` |
 | Brainstorm a new game idea | Use `/brainstorm` skill |
@@ -189,12 +193,6 @@ Templates are in `.claude/docs/templates/`:
 - `difficulty-curve.md` -- for difficulty axes, onboarding ramp, and cross-system interactions
 - `test-evidence.md` -- template for recording manual test evidence (screenshots, walkthrough notes)
 
-Also in `.claude/docs/templates/collaborative-protocols/` (used by agents, not typically edited directly):
-
-- `design-agent-protocol.md` -- question-options-draft-approval cycle for design agents
-- `implementation-agent-protocol.md` -- story pickup through /story-done cycle for programming agents
-- `leadership-agent-protocol.md` -- cross-department delegation and escalation for director-tier agents
-
 ### 5. Follow the Coordination Rules
 
 1. Work flows down the hierarchy: Directors -> Leads -> Specialists
@@ -218,8 +216,8 @@ If you already know what you need, jump directly to the relevant path:
    - Produces a game concept document and recommends an engine
 2. **Set up the engine** — Run `/setup-engine` (uses the brainstorm recommendation)
    - Configures CLAUDE.md, detects knowledge gaps, populates reference docs
-   - Creates `.claude/docs/technical-preferences.md` with naming conventions,
-     performance budgets, and engine-specific defaults
+   - Writes engine, naming conventions, and performance budgets to `project.yaml`
+     (the source of truth), mirrored to `.claude/docs/technical-preferences.md`
    - If the engine version is newer than the LLM's training data, it fetches
      current docs from the web so agents suggest correct APIs
 3. **Validate the concept** — Run `/design-review design/gdd/game-concept.md`
@@ -271,15 +269,16 @@ If you have design docs, prototypes, or code already:
 
 ```
 CLAUDE.md                          -- Master config (read this first, ~60 lines)
+project.yaml                       -- Machine-readable project config (engine, modes, stage) — source of truth
 .claude/
   settings.json                    -- Claude Code hooks and project settings
-  agents/                          -- 49 agent definitions (YAML frontmatter)
-  skills/                          -- 73 slash command definitions (YAML frontmatter)
-  hooks/                           -- 12 hook scripts (.sh) wired by settings.json
+  agents/                          -- 53 agent definitions (YAML frontmatter)
+  skills/                          -- 74 slash command definitions (YAML frontmatter)
+  hooks/                           -- 12 event hooks (.sh, wired by settings.json) + yaml-helper.sh
   rules/                           -- 11 path-specific rule files
   docs/
     quick-start.md                 -- This file
-    technical-preferences.md       -- Project-specific standards (populated by /setup-engine)
+    technical-preferences.md       -- Legacy fallback for project.yaml config (mirror; see project.yaml at repo root)
     coding-standards.md            -- Coding and design doc standards
     coordination-rules.md          -- Agent coordination rules
     context-management.md          -- Context budgets and compaction instructions
@@ -287,5 +286,6 @@ CLAUDE.md                          -- Master config (read this first, ~60 lines)
     workflow-catalog.yaml          -- 7-phase pipeline definition (read by /help)
     setup-requirements.md          -- System prerequisites (Git Bash, jq, Python)
     settings-local-template.md     -- Personal settings.local.json guide
-    templates/                     -- 41 document templates
+    CLAUDE-local-template.md       -- Personal CLAUDE.local.md guide (gitignored overrides)
+    templates/                     -- 38 document templates (+ per-section guidance)
 ```

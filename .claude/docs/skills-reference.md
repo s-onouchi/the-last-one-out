@@ -1,6 +1,6 @@
 # Available Skills (Slash Commands)
 
-73 slash commands organized by phase. Type `/` in Claude Code to access any of them.
+74 slash commands organized by phase. Type `/` in Claude Code to access any of them.
 
 ## Onboarding & Navigation
 
@@ -10,6 +10,7 @@
 | `/help` | Context-aware "what do I do next?" — reads current stage and surfaces the required next step |
 | `/project-stage-detect` | Full project audit — detect phase, identify existence gaps, recommend next steps |
 | `/setup-engine` | Configure engine + version, detect knowledge gaps, populate version-aware reference docs |
+| `/settings` | View or change project config — effective merged values, or set locally in `project.local.yaml` |
 | `/adopt` | Brownfield format audit — checks internal structure of existing GDDs/ADRs/stories, produces migration plan |
 
 ## Game Design
@@ -136,3 +137,23 @@ Coordinate multiple agents on a single feature area:
 | `/team-level` | level-designer + narrative-director + world-builder + art-director + systems-designer + qa-tester |
 | `/team-live-ops` | live-ops-designer + economy-designer + community-manager + analytics-engineer |
 | `/team-qa` | qa-lead + qa-tester + gameplay-programmer + producer |
+
+## Overlap with Claude Code's bundled skills
+
+Claude Code ships its own skills, and one name collides with CCGS's.
+
+| You type | You get | Use it for |
+|---------|---------|-----------|
+| `/code-review` | **CCGS's** — project skills take the bare name | Architectural review against this project's coding standards, SOLID, testability and the control manifest. Knows about ADRs, stories and `docs/architecture/`. |
+| `/code-review:code-review` | **Claude Code's bundled** review | Reviewing a pull request or a plain diff, with no knowledge of CCGS's design documents or gates. |
+
+Both are useful; they answer different questions. Reach for the CCGS one during
+`/dev-story` and before `/story-done`, because it checks the things the gates
+later check. Reach for the bundled one when you want a general review of a diff
+that has nothing to do with a story.
+
+CCGS does **not** turn the bundled skills off. `disableBundledSkills` would
+remove all of them, including `/debug`, `/security-review` and `/simplify`,
+which are worth keeping. If you want a bundled skill hidden, use
+`skillOverrides` in your own `.claude/settings.local.json` rather than disabling
+the whole set.

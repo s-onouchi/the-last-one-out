@@ -1,11 +1,19 @@
 ---
 name: test-flakiness
-description: "Detect non-deterministic (flaky) tests by reading CI run logs or test result history. Aggregates pass rates per test, identifies intermittent failures, recommends quarantine or fix, and maintains a flaky test registry. Best run during Polish phase or after multiple CI runs."
+description: "Find flaky tests from CI logs — aggregates pass rates, spots intermittent failures, recommends quarantine. After multiple runs."
 argument-hint: "[ci-log-path | scan | registry]"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Bash(bash "*/.claude/skills/test-flakiness/../../hooks/yaml-helper.sh" resolve_config *)
 model: sonnet
 ---
+
+!`bash "${CLAUDE_SKILL_DIR}/../../hooks/yaml-helper.sh" resolve_config --keys automation`
+
+**Automation mode**: Resolve `modes.automation` (`project.local.yaml` →
+`project.yaml` → default `collaborative`). Every `AskUserQuestion` call and
+every file write follows `.claude/docs/automation-modes.md`
+(collaborative asks always · guided major-only · autonomous logs and proceeds;
+`automation_always_ask` categories always prompt).
 
 # Test Flakiness Detection
 
@@ -56,6 +64,11 @@ by default.
 For Unreal projects: automation logs go to `Saved/Logs/`. Grep for
 `Result: Success` and `Result: Fail` patterns.
 
+For Babylon.js projects: Vitest writes JUnit XML when run with
+`--reporter=junit --outputFile.junit=test-results/junit.xml`; Playwright writes
+it with `--reporter=junit` (`PLAYWRIGHT_JUNIT_OUTPUT_NAME`). Playwright retries
+also mark a test `flaky` directly in its report — treat that as a failed run.
+
 ### Option B — Local log files
 
 If a path argument is provided, read that file directly.
@@ -78,7 +91,7 @@ Stop and ask the user which option to pursue.
 
 For each CI log or result file found, parse:
 
-**JUnit XML format** (GdUnit4 / Unity):
+**JUnit XML format** (GdUnit4 / Unity / Vitest / Playwright):
 - Grep for `<testcase name=` to get test names
 - Grep for `<failure` or `<error` to identify failures
 - Parse `classname` and `name` attributes for full test identifiers
@@ -88,6 +101,7 @@ For each CI log or result file found, parse:
   - Godot: `PASSED` / `FAILED` adjacent to test names
   - Unreal: `Result: Success` / `Result: Fail`
   - Unity: `Test passed` / `Test failed`
+  - Vitest: `✓` / `×` (or `FAIL`) before test names
 
 Build a table: `test_id → [run1_result, run2_result, run3_result, ...]`
 
@@ -113,10 +127,10 @@ For each flaky test, classify the likely cause:
 | **Timing / async** | Fails after awaiting signals or timers; pass rate correlates with system load | Add explicit await/synchronisation; avoid time-based delays |
 | **Order dependency** | Fails when run after specific other tests; passes in isolation | Add proper setup/teardown; ensure test isolation |
 | **Random seed** | Fails intermittently with no pattern; involves RNG | Pass explicit seed; don't use `randf()` in tests |
-| **Resource leak** | Fails more often later in a test run | Fix cleanup in teardown; check orphan nodes (Godot) or object disposal (Unity) |
+| **Resource leak** | Fails more often later in a test run | Fix cleanup in teardown; check orphan nodes (Godot), object disposal (Unity), or undisposed `Engine`/`Scene` between tests (Babylon.js) |
 | **External state** | Fails when a file, scene, or global exists from a prior test | Isolate test from file system; use in-memory mocks |
-| **Floating point** | Fails on comparisons like `== 0.5` | Use epsilon comparison (`is_equal_approx`, `Assert.AreApproximately`) |
-| **Scene/prefab load race** | Fails when scenes are not yet ready | Await one frame after instantiation; use `await get_tree().process_frame` |
+| **Floating point** | Fails on comparisons like `== 0.5` | Use epsilon comparison (`is_equal_approx`, `Assert.AreApproximately`, `toBeCloseTo`) |
+| **Scene/prefab load race** | Fails when scenes are not yet ready | Await one frame after instantiation; use `await get_tree().process_frame`; Babylon.js: `await scene.whenReadyAsync()` |
 
 Use Grep to check the test file for timing calls, randf, global state access,
 or equality comparisons on floats to narrow down the cause.

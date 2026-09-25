@@ -1,13 +1,16 @@
 ---
 name: prototype
-description: "Concept prototype — validate the core idea is worth designing before writing GDDs. Run right after /brainstorm and /setup-engine. Routes to HTML, Engine, or Paper path based on game type. Produces a throwaway build and a PROCEED/PIVOT/KILL verdict."
+description: "Concept prototype before GDDs — throwaway HTML, Engine or Paper build, PROCEED/PIVOT/KILL. After /brainstorm and /setup-engine."
 argument-hint: "[concept-description] [--path html|engine|paper] [--review full|lean|solo] [--spike]"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Task, AskUserQuestion
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Agent, AskUserQuestion, Bash(bash "*/.claude/skills/prototype/../../hooks/yaml-helper.sh" resolve_config *)
 model: sonnet
-agent: prototyper
 isolation: worktree
 ---
+
+!`bash "${CLAUDE_SKILL_DIR}/../../hooks/yaml-helper.sh" resolve_config --keys review_mode,automation`
+
+
 
 ## Purpose
 
@@ -29,10 +32,10 @@ before committing to Production, run `/vertical-slice` instead.
 
 ## Phase 1: Define the Question
 
-Resolve the review mode (once, store for all gate spawns this run):
-1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
-3. Else → default to `lean`
+
+Every `AskUserQuestion` call follows `.claude/docs/automation-modes.md`
+(collaborative asks always · guided major-only · autonomous logs and proceeds;
+`automation_always_ask` categories always prompt).
 
 **Check for spike mode:** If `--spike` was passed, skip to the **Spike Mode** section
 at the bottom of this skill.
@@ -94,8 +97,11 @@ Read `design/gdd/game-concept.md` if it exists. Extract:
 - Core fantasy (what the player is supposed to feel)
 - Core loop (the moment-to-moment action being tested)
 
-Read `CLAUDE.md` and `.claude/docs/technical-preferences.md` for the engine and
-language in use.
+Determine the engine and language in use: read `engine.name` and
+`engine.language` from `project.yaml`. For each field, if its key is absent or
+empty (including when `project.yaml` has no `engine:` block), fall back to
+`CLAUDE.md` and `.claude/docs/technical-preferences.md`. Treat a
+`[TO BE CONFIGURED]` value as not set.
 
 ---
 
@@ -179,7 +185,13 @@ Reframe the hypothesis and simplify aggressively, or switch to Paper path.
 
 **Output:** A minimal runnable engine project in `prototypes/[name]-concept/`.
 
-**Lighter alternative — Love2D (Lua):** If the project engine (Godot, Unity, Unreal)
+**Babylon.js projects:** the Engine path is browser-native — scaffold a Vite +
+TypeScript app in `prototypes/[name]-concept/` (`npm create vite@latest`, then
+`npm i @babylonjs/core`), iterate with `npm run dev`, and share the `npm run build`
+output exactly like an HTML prototype (itch.io, a link). Feel latency is real
+browser latency, so this is a valid feel test when the shipping target is web.
+
+**Lighter alternative — Love2D (Lua):** If the project engine (Godot, Unity, Unreal, Babylon.js)
 feels too heavy to stand up for a throwaway build, consider Love2D — a minimal 2D
 framework that installs in minutes, requires no project scaffolding, and renders
 natively with no browser latency. Used by many indie devs for rapid 2D action and
@@ -320,7 +332,8 @@ controller naturally produces, you learn exactly what the AI needs to do.
 
 After writing the initial code:
 
-> "The prototype files are written. Run the project in your engine now.
+> "The prototype files are written. Run the project in your engine now
+> (Babylon.js: `npm install && npm run dev`, then open the printed URL).
 > If there are errors, paste them here and I'll fix them. If it runs,
 > describe what you see and whether it feels like it's answering the question."
 
@@ -415,7 +428,7 @@ is the project's complete history of what was tried and what was learned.
 **Review mode check:**
 - `solo` → skip. Note: "CD-PLAYTEST skipped — Solo mode."
 - `lean` → skip. Note: "CD-PLAYTEST skipped — Lean mode."
-- `full` → spawn `creative-director` via Task using gate **CD-PLAYTEST** if
+- `full` → spawn `creative-director` via `Agent` using gate **CD-PLAYTEST** if
   `design/gdd/game-concept.md` exists with game pillars defined. If pillars are
   not yet defined, note: "CD-PLAYTEST skipped — game pillars not yet defined at
   concept prototype stage."

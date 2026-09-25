@@ -1,13 +1,26 @@
 ---
 name: setup-engine
-description: "Configure the project's game engine and version. Pins the engine in CLAUDE.md, detects knowledge gaps, and populates engine reference docs via WebSearch when the version is beyond the LLM's training data."
+description: "Configure engine and version. Pins it in CLAUDE.md; WebSearch fills reference docs when the version is beyond LLM training data."
 argument-hint: "[engine] | [engine version] | refresh | upgrade [old-version] [new-version] | no args for guided selection"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Write, Edit, WebSearch, WebFetch, Task, AskUserQuestion
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, WebSearch, WebFetch, Agent, AskUserQuestion, Bash(bash "*/.claude/skills/setup-engine/../../hooks/yaml-helper.sh" resolve_config *)
 model: sonnet
 ---
 
 When this skill is invoked:
+
+!`bash "${CLAUDE_SKILL_DIR}/../../hooks/yaml-helper.sh" resolve_config --keys workflow`
+
+**Tier awareness.** The `workflow` tier resolved above governs which design
+artifact this skill expects and the finish path it recommends in §12:
+- **`minimal`** — the design artifact is the one-page `design/game-brief.md`
+  (no GDDs, systems decomposition, or per-system design at this tier).
+  `/setup-engine` runs *first* in the minimal path, so a missing brief here is
+  normal, not a gap. The finish path is the 4-step floor.
+- **`standard` / `full`** — the design artifact is `design/gdd/game-concept.md`
+  and the finish path is the full pipeline.
+
+If the block did not render (shell preprocessing disabled), assume `standard`.
 
 ## 1. Parse Arguments
 
@@ -26,18 +39,27 @@ Four modes:
 If no engine is specified, run an interactive engine selection process:
 
 ### Check for existing game concept
-- Read `design/gdd/game-concept.md` if it exists — extract genre, scope, platform
-  targets, art style, team size, and any engine recommendation from `/brainstorm`
-- If no concept exists, inform the user:
+Read the design artifact for the resolved tier (see **Tier awareness** above):
+- **`standard` / `full`**: read `design/gdd/game-concept.md` if it exists —
+  extract genre, scope, platform targets, art style, team size, and any engine
+  recommendation from `/brainstorm`.
+- **`minimal`**: read `design/game-brief.md` if it exists — extract genre,
+  scope, platform, and art direction from its fields. Its absence is **expected**
+  at `minimal` (the brief is authored *after* engine setup in the minimal path), so
+  do not treat a missing brief as a gap — proceed straight to guided selection.
+- If no concept **or** brief exists, inform the user:
   > "No game concept found. Consider running `/brainstorm` first to discover what
   > you want to build — it will also recommend an engine. Or tell me about your
   > game and I can help you pick."
+
+  (At `minimal` this is optional, not a prerequisite — you can pick an engine now
+  and write the brief next.)
 
 ### If the user wants to pick without a concept, ask in this order:
 
 **Question 1 — Prior experience** (ask this first, always, via `AskUserQuestion`):
 - Prompt: "Have you worked in any of these engines before?"
-- Options: `Godot` / `Unity` / `Unreal Engine 5` / `Multiple — I'll explain` / `None of them`
+- Options: `Godot` / `Unity` / `Unreal Engine 5` / `Babylon.js` / `Multiple — I'll explain` / `None of them`
 - If they pick a specific engine → recommend that engine. Prior experience outweighs all other factors. Confirm with them and skip the matrix.
 - If "None" or "Multiple" → continue to the questions below.
 
@@ -45,18 +67,19 @@ If no engine is specified, run an interactive engine selection process:
 
 **Question 2 — Target platform** (ask this second, always, via `AskUserQuestion` — platform eliminates or heavily weights engines before any other factor):
 - Prompt: "What platforms are you targeting for this game?"
-- Options: `PC (Steam / Epic)` / `Mobile (iOS / Android)` / `Console` / `Web / Browser` / `Multiple platforms`
+- Options: `PC (Steam / Epic)` / `Mobile (iOS / Android)` / `Console` / `Web / Browser` / `VR/AR (immersive)` / `Multiple platforms`
 - Platform rules that feed directly into the recommendation:
   - Mobile → Unity strongly preferred; Unreal is a poor fit; Godot is viable for simple mobile
   - Console → Unity or Unreal; Godot console support requires third-party publishers or significant extra work
-  - Web → Godot exports cleanly to web; Unity WebGL is functional; Unreal has poor web support
+  - Web → Babylon.js is the native code-first choice; Godot exports cleanly to web; Unity WebGL is functional; Unreal has poor web support
+  - VR/AR (immersive) → If browser-delivered (Quest browser, Vision Pro Safari) → Babylon.js strongly preferred (native WebXR). If native (PCVR app, Quest standalone app) → Unity (broadest VR ecosystem) or Unreal (visual fidelity). Vision Pro native is outside this engine set (Swift/visionOS SDK required).
   - PC only → all engines viable; other factors decide
-  - Multiple → Unity is the most portable across PC/mobile/console
+  - Multiple → Unity is the most portable across PC/mobile/console; Babylon.js is most portable across web platforms but only web
 
 1. **What kind of game?** (2D, 3D, or both?)
 2. **Primary input method?** (keyboard/mouse, gamepad, touch, or mixed?)
 3. **Team size and experience?** (solo beginner, solo experienced, small team?)
-4. **Any strong language preferences?** (GDScript, C#, C++, visual scripting?)
+4. **Any strong language preferences?** (GDScript, C#, C++, TypeScript, visual scripting?)
 5. **Budget for engine licensing?** (free only, or commercial licenses OK?)
 
 ### Produce a recommendation
@@ -83,6 +106,12 @@ Do NOT use a simple scoring matrix that eliminates engines. Instead, reason thro
 - Licensing reality: 5% royalty only applies AFTER $1M gross revenue per title. For a first game or any game that doesn't reach $1M, it costs nothing. This threshold is high enough that most indie developers will never pay it.
 - Best fit: AAA-quality 3D; large open-world games; photorealistic visuals; developers with C++ experience or willing to use Blueprint; games targeting high-end PC/console where visual fidelity is a core selling point
 
+**Babylon.js**
+- Genuine strengths: Web-native (no plugin or app store install), WebXR is best-in-class for browser-delivered VR/AR (Quest 3, Vision Pro Safari), TypeScript-first with full type safety, code-centric workflow (no editor lock-in), MIT/Apache-2.0 licensed and Microsoft-backed, free forever, modern rendering (WebGL2 stable + WebGPU production-ready as of 9.0)
+- Real limitations: Not a full game engine — it's a 3D library. No built-in scene editor (community Babylon.js Editor exists but not first-party). No prefab/component system equivalent to Unity/Unreal — you architect game systems yourself. No console export. Mobile is web-wrapped (Capacitor/Cordova/Electron), not native. Smaller game-dev community than Unity/Unreal/Godot. Asset pipeline is DIY (no drag-and-drop). Havok physics fails silently on iOS < 16.4 (no WebAssembly SIMD).
+- Licensing reality: Apache 2.0. No revenue thresholds, no policy-change risk. Owned by Microsoft, professionally maintained, fully open source.
+- Best fit: Web-native games (browser-first); WebXR / VR/AR experiences targeting Quest or Vision Pro browser; TypeScript developers; teams comfortable with full architectural control; experimental/educational 3D; projects where instant-load (no install) is a feature
+
 **Genre-specific guidance** (factor this into the recommendation):
 - 2D any style → Godot strongly preferred
 - 3D stylized / atmospheric / contained world → Godot viable, Unity solid alternative
@@ -94,6 +123,8 @@ Do NOT use a simple scoring matrix that eliminates engines. Instead, reason thro
 - Action RPG / Soulslike → Unity or Unreal for 3D; community support and assets matter here
 - Platformer 2D → Godot
 - Strategy / top-down / RTS → Godot or Unity depending on 2D vs 3D
+- Web-native / browser-first → Babylon.js (code-first) or Godot (editor-first); both export to web well
+- VR/AR via browser (Quest 3, Vision Pro Safari) → Babylon.js strongly preferred (native WebXR)
 
 **Recommendation format:**
 1. Show a comparison table with the user's specific factors as rows
@@ -123,11 +154,44 @@ Once the engine is chosen:
   - Search: `"[engine] latest stable version [current year]"`
   - Confirm with the user: "The latest stable [engine] is [version]. Use this?"
 
+### Check the chosen version against what is actually installed
+
+A version found by web search is what exists, not what the developer has. Pinning
+one they cannot run means every later instruction — build, test, smoke, the
+engine reference docs — targets an engine that is not on the machine.
+
+Probe for the binary (Bash), and treat failure as unknown, never as absent:
+
+| Engine | Probe |
+|--------|-------|
+| Godot | `godot --version`, else look for `godot`/`Godot_v*` on PATH or in the platform's usual install location |
+| Unity | `Unity -version`, else the Hub's editor directory |
+| Unreal | `UnrealEditor-Cmd -version`, else the launcher's install directory |
+| Babylon.js | No editor binary — Babylon.js is an npm package. Probe `node --version` and `npm --version` (the toolchain), then the resolved package: `npm ls @babylonjs/core --depth=0`, else the `version` field of `node_modules/@babylonjs/core/package.json`. Before `npm install` has run (the usual state at setup time), the package is `NOT DETERMINED`, not absent. |
+
+Then:
+- **Match** — say so in one line and continue.
+- **Mismatch** — state both versions and ask, offering three options: pin the
+  installed version, pin the newer one and upgrade later, or pin the newer one
+  deliberately. Record the answer; do not pick silently.
+- **Not found / probe failed** — report `installed version NOT DETERMINED` and
+  continue with the chosen version. Do **not** report this as "no engine
+  installed": a probe that could not run has not established absence.
+
+Whatever the outcome, write it into Section 7's `VERSION.md` as an
+`Installed at pin time` row, so a later reader can tell a deliberate
+version-ahead pin from an accident.
+
 ---
 
 ## 4. Update CLAUDE.md Technology Stack
 
-### Language Selection (Godot only)
+### Language Selection (Godot only — others are auto-determined)
+
+For non-Godot engines, the language is fixed and no question is asked:
+- Unity → C#
+- Unreal → C++ + Blueprint
+- Babylon.js → TypeScript (strict mode + noUncheckedIndexedAccess mandatory)
 
 If Godot was chosen, ask the user which language to use **before** showing the proposed Technology Stack:
 
@@ -150,7 +214,7 @@ Wait for confirmation before making any edits.
 
 Update the Technology Stack section, replacing the `[CHOOSE]` placeholders with the actual values:
 
-**For Godot** — use the template matching the language chosen above. See **Appendix A** at the bottom of this skill for all three variants (GDScript, C#, Both).
+**For Godot** — use the template matching the language chosen above. See `.claude/skills/setup-engine/references/godot-language-config.md` (**A1**) for all three variants (GDScript, C#, Both).
 
 **For Unity:**
 ```markdown
@@ -168,6 +232,30 @@ Update the Technology Stack section, replacing the `[CHOOSE]` placeholders with 
 - **Asset Pipeline**: Unreal Content Pipeline
 ```
 
+**For Babylon.js:**
+```markdown
+- **Engine**: Babylon.js [version]
+- **Language**: TypeScript (strict + noUncheckedIndexedAccess mandatory)
+- **Build System**: Vite (recommended) or webpack
+- **Asset Pipeline**: glTF/glb import via @babylonjs/loaders, KTX2 textures for production, .env files for IBL
+```
+
+### Engine reference import
+
+In the same CLAUDE.md write, set the **Engine Version Reference** import to the
+chosen engine. Find the line marked `ENGINE-REFERENCE-IMPORT` (an
+`@docs/engine-reference/<engine>/VERSION.md` line under its comment) and Edit it
+to point at the configured engine:
+- Godot → `@docs/engine-reference/godot/VERSION.md`
+- Unity → `@docs/engine-reference/unity/VERSION.md`
+- Unreal → `@docs/engine-reference/unreal/VERSION.md`
+- Babylon.js → `@docs/engine-reference/babylonjs/VERSION.md`
+
+This is why a fresh Unity, Unreal, or Babylon.js project no longer loads the Godot reference in
+every session. It is idempotent — re-running `/setup-engine` for a different
+engine rewrites the same line. (The target `docs/engine-reference/<engine>/`
+directory is created in Section 8 below if it does not yet exist.)
+
 ---
 
 ## 5. Populate Technical Preferences
@@ -180,7 +268,7 @@ engine-appropriate defaults. Read the existing template first, then fill in:
 
 ### Naming Conventions (engine defaults)
 
-**For Godot** — see **Appendix A** for GDScript, C#, and Both variants.
+**For Godot** — see `.claude/skills/setup-engine/references/godot-language-config.md` (**A2**) for GDScript, C#, and Both variants.
 
 **For Unity (C#):**
 - Classes: PascalCase (e.g., `PlayerController`)
@@ -196,6 +284,16 @@ engine-appropriate defaults. Read the existing template first, then fill in:
 - Functions: PascalCase (e.g., `TakeDamage()`)
 - Booleans: `b` prefix (e.g., `bIsAlive`)
 - Files: Match class without prefix (e.g., `PlayerController.h`)
+
+**For Babylon.js (TypeScript):**
+- Classes: PascalCase (e.g., `PlayerController`)
+- Functions/methods: camelCase (e.g., `updatePosition`, `takeDamage`)
+- Variables: camelCase (e.g., `moveSpeed`)
+- Constants: UPPER_SNAKE_CASE (e.g., `MAX_HEALTH`)
+- Files: kebab-case or camelCase (e.g., `player-controller.ts`) — pick one and be consistent project-wide
+- Type imports: `import type { ... }` separated from runtime imports for tree-shaking
+- Observer callbacks: prefixed `onSomething` (matches Babylon.js `Observable<T>` conventions)
+- Async functions: no special prefix (TypeScript types make async-ness visible)
 
 ### Input & Platform Section
 
@@ -217,6 +315,22 @@ For **Primary Input**, use the dominant input for the game genre:
 - Mobile game → Touch
 - Cross-platform → ask the user
 
+> **Genre may not exist yet — check before deriving from it.** At `minimal` the
+> design artifact is `design/game-brief.md`, and it is authored *after* this
+> skill runs (Section 2 says so explicitly). There is no genre to map. The same
+> is true at any tier when `/setup-engine` is run before the concept exists.
+>
+> When genre is unavailable, **ask** — do not infer one from the platform, and do
+> not leave the field silently blank:
+> - Prompt: "Primary input for a [2D/3D] [platform] game? Genre isn't established
+>   yet — the brief comes next — so this can't be derived."
+> - Options: the plausible inputs for that platform, plus
+>   `Leave as [TO BE CONFIGURED]` — a legitimate answer here, revisited via
+>   `/settings` once the brief exists.
+>
+> Gamepad Support and Touch Support still come from the platform table above;
+> only Primary Input depends on genre.
+
 Present the derived values and ask the user to confirm or adjust before writing.
 
 Example filled section:
@@ -235,7 +349,15 @@ Example filled section:
   - Prompt: "Should I set default performance budgets now, or leave them for later?"
   - Options: `[A] Set defaults now (60fps, 16.6ms frame budget, engine-appropriate draw call limit)` / `[B] Leave as [TO BE CONFIGURED] — I'll set these when I know my target hardware`
   - If [A]: populate with the suggested defaults. If [B]: leave as placeholder.
-- **Testing**: Suggest engine-appropriate framework (GUT for Godot, NUnit for Unity, etc.) — ask before adding.
+- **Testing**: Suggest the engine-appropriate framework — **gdUnit4** for Godot,
+  NUnit for Unity, Automation Spec for Unreal, **Vitest (+ Playwright for
+  browser/E2E) for Babylon.js** — and ask before adding.
+  > **Must match `commands.test` in Section 5.5.1, which writes
+  > `godot --headless --script tests/gdunit4_runner.gd` for Godot (`npm test` for
+  > Babylon.js), and
+  > `.claude/docs/coding-standards.md`, which names the same runner.** Naming GUT
+  > here would have the skill recommend one framework and configure another in the
+  > same run.
 - **Forbidden Patterns**: Leave as placeholder — do NOT pre-populate.
 - **Allowed Libraries**: Leave as placeholder — do NOT pre-populate dependencies the project does not currently need. Only add a library here when it is actively being integrated, not speculatively.
 
@@ -245,7 +367,7 @@ Example filled section:
 
 Also populate the `## Engine Specialists` section in `technical-preferences.md` with the correct routing for the chosen engine:
 
-**For Godot** — see **Appendix A** for the routing table matching the language chosen.
+**For Godot** — see `.claude/skills/setup-engine/references/godot-language-config.md` (**A3**) for the routing table matching the language chosen.
 
 **For Unity:**
 ```markdown
@@ -292,9 +414,34 @@ Also populate the `## Engine Specialists` section in `technical-preferences.md` 
 | General architecture review | unreal-specialist |
 ```
 
+**For Babylon.js:**
+```markdown
+## Engine Specialists
+- **Primary**: babylonjs-specialist
+- **Language/Code Specialist**: babylonjs-specialist (TypeScript review — primary covers it; TS is fixed)
+- **Shader Specialist**: babylonjs-shader-specialist (NodeMaterial v2, GLSL/WGSL, post-processing, particle shaders)
+- **UI Specialist**: babylonjs-gui-specialist (Babylon GUI: ADT, 2D Controls, 3D GUI for XR, Node GUI)
+- **Additional Specialists**: babylonjs-webxr-specialist (WebXR sessions, hand tracking, depth sensing, anchors, Quest/Vision Pro)
+- **Routing Notes**: Invoke primary for scene graph architecture, asset loading, render loop, Vite/tsconfig setup, and physics integration. Invoke shader specialist for any material/shader/post-process work. Invoke UI specialist for in-scene UI (HTML overlay UI is `ui-programmer` domain). Invoke WebXR specialist for any immersive/VR/AR feature. Babylon.js is TypeScript-only — no language specialist split.
+
+### File Extension Routing
+
+| File Extension / Type | Specialist to Spawn |
+|-----------------------|---------------------|
+| Game code (.ts files) | babylonjs-specialist |
+| Shader files (.glsl, .wgsl, inline shaders in .ts) | babylonjs-shader-specialist |
+| NodeMaterial JSON exports (.nme.json) | babylonjs-shader-specialist |
+| In-scene UI code (Babylon GUI, ADT, 3D GUI) | babylonjs-gui-specialist |
+| Node GUI exports (.gui.json) | babylonjs-gui-specialist |
+| WebXR / immersive feature code | babylonjs-webxr-specialist |
+| Build / config files (vite.config.ts, tsconfig.json, package.json) | babylonjs-specialist |
+| HTML overlay UI (DOM/CSS) | ui-programmer (engine-agnostic) |
+| General architecture review | babylonjs-specialist |
+```
+
 ### Collaborative Step
 Present the filled-in preferences to the user. For Godot, include the chosen language and note where the full naming conventions and routing tables live:
-> "Here are the default technical preferences for [engine] ([language if Godot]). The naming conventions and specialist routing are in Appendix A of this skill — I'll apply the [GDScript/C#/Both] variant. Want to customize any of these, or shall I save the defaults?"
+> "Here are the default technical preferences for [engine] ([language if Godot]). The naming conventions and specialist routing are in this skill's references directory — I'll apply the [GDScript/C#/Both] variant. Want to customize any of these, or shall I save the defaults?"
 
 For all other engines, present the defaults directly without referencing the appendix.
 
@@ -302,15 +449,452 @@ Wait for approval before writing the file.
 
 ---
 
+## 5.5 Populate `project.yaml` (Primary Config Store)
+
+> **v1.1:** `project.yaml` at the repo root is the **primary** store for project
+> configuration. The `.claude/docs/technical-preferences.md` file written in
+> Section 5 is kept as a **legacy mirror** for backward compatibility. This step
+> is a **dual-write** — the same engine facts go into both files, and
+> `project.yaml` wins when a skill reads a key present in both.
+
+After `technical-preferences.md` is written and approved, dual-write the
+structured config into `project.yaml`. Four blocks are written: `engine`,
+`specialists`, `naming`, and `commands`.
+
+### 5.5.1 Build the four blocks
+
+Derive every value from the engine and language already chosen in Sections 3–4.
+Do NOT re-ask for the **engine, version or language** — reuse those decisions.
+
+> **That is not a blanket "never ask".** `rendering` and `physics` below depend on
+> two further inputs — target platform and 2D-vs-3D — which **Section 2 collects on
+> only one of the four entry paths**. When they were never collected, ask; the
+> unavailable-branch under the project-shape table says how.
+
+**`engine` block:**
+
+```yaml
+engine:
+  name: "<Godot|Unity|Unreal|BabylonJS>"
+  version: "<version from Section 3>"
+  language: "<GDScript|C#|C++|Blueprint|TypeScript>"
+  rendering: "<engine default — see table>"
+  physics: "<engine default — see table>"
+```
+
+> **Babylon.js is written `BabylonJS` — no dot, exactly this casing.**
+> `engine.name` is an enum (`yaml-helper.sh` rejects anything else), and
+> skills derive two paths from it by lowercasing: the reference directory
+> `docs/engine-reference/<engine>/` and the primary agent `<engine>-specialist`.
+> `BabylonJS` lowercases to `babylonjs`, which is both the directory and the
+> agent prefix; `Babylon.js` would produce `babylon.js-specialist`, an agent that
+> does not exist. The prose name `Babylon.js` stays correct everywhere else
+> (CLAUDE.md, `technical-preferences.md`). Its version is the `@babylonjs/core`
+> version without the product name — `9.5`, not `Babylon.js 9.5`.
+
+**On Godot these two values depend on the answers Section 2 already collected —
+the target platform and 2D-vs-3D — so do not pick them from the engine name
+alone.** On Unity, Unreal and Babylon.js the table has a single `any` row and the
+engine name *is* sufficient; take those rows directly.
+
+| Engine | Project shape | `rendering` default | `physics` default |
+|--------|---------------|---------------------|-------------------|
+| Godot 4.x | 2D · web target | Compatibility | Godot Physics 2D |
+| Godot 4.x | 2D · non-web | Forward+ | Godot Physics 2D |
+| Godot 4.x | 3D · web target | Compatibility | Jolt |
+| Godot 4.x | 3D · non-web | Forward+ | Jolt |
+| Unity | any | URP | PhysX |
+| Unreal | any | Lumen + Nanite (deferred) | Chaos |
+| Babylon.js | any | WebGL2 | Havok |
+
+> **Why this table has a shape column and the others do not.** Both Godot
+> defaults were wrong for a 2D browser game, and both were wrong from data this
+> skill had already collected and then discarded.
+> - **Jolt is Godot's default *3D* engine.** `docs/engine-reference/godot/modules/physics.md`:
+>   "Jolt Physics is the DEFAULT 3D engine" and "2D physics UNCHANGED (still
+>   Godot Physics 2D)". Writing `Jolt` on a 2D project sends the implementer to
+>   tune a backend their game does not use.
+> - **Forward+ is desktop-focused.** `docs/engine-reference/godot/modules/rendering.md`:
+>   Forward+ is "Full featured, desktop-focused"; Compatibility is
+>   "OpenGL 3.3 / WebGL 2, broadest hardware support" — the browser path.
+>
+> If Section 2's platform answer was `Multiple platforms` **including** web, use
+> the web row: the renderer must work everywhere the game ships.
+
+> **Godot only — Unity, Unreal and Babylon.js have one row each, keyed `any`.**
+> Shape cannot change `rendering` or `physics` for those three, so do **not** run
+> the resolution below for them: asking an operator a question whose answer you
+> will discard is exactly what §5.5.1 opens by forbidding. On Unity write
+> `URP`/`PhysX`, on Unreal write `Lumen + Nanite (deferred)`/`Chaos`, and on
+> Babylon.js write `WebGL2`/`Havok` straight from the table.
+>
+> **Babylon.js — why `WebGL2` and not `WebGPU`.** Babylon's default `Engine`
+> class is WebGL2; WebGPU is opt-in through `WebGPUEngine`
+> (`docs/engine-reference/babylonjs/modules/rendering.md`). If the user has
+> *already said* they want WebGPU, write `WebGPU (WebGL2 fallback)` instead —
+> `project-coherence.sh` then checks that `src/` references `WebGPUEngine`.
+> `Havok` requires the `@babylonjs/havok` package (WASM) in `package.json`, which
+> the same script checks; note to the user that Havok needs WebAssembly SIMD
+> (`docs/engine-reference/babylonjs/packages/havok.md`). A 2D Babylon.js project
+> that uses no physics may write `none`.
+>
+> **Section 2 did not necessarily run — check before reading its answers.**
+> Target platform and 2D-vs-3D are collected under *Questions 2–6, only if no
+> prior engine experience*. **Three of the four entry paths never reach them:**
+> `/setup-engine <engine> <version>` and `/setup-engine <engine>` skip Section 2
+> outright, and guided mode skips the matrix as soon as the user names an engine
+> they have worked in before. Only guided mode answered `None` or `Multiple`
+> collects both.
+>
+> Resolve each input in this order and stop at the first that answers:
+> 1. **Section 2's answers**, if that path ran.
+> 2. **The design artifact** — `design/gdd/game-concept.md` at `standard`/`full`,
+>    `design/game-brief.md` at `minimal`. Section 2 already extracts platform
+>    targets from these; extract 2D-vs-3D the same way when it is stated.
+> 3. **Ask.** Do not infer the shape from the engine name, and do not write a row
+>    you could not justify:
+>    - Prompt: "`rendering` and `physics` depend on the project's shape, which
+>      hasn't been established yet. Is this 2D or 3D, and does it ship to web?"
+>    - Options: `2D · non-web` / `2D · web` / `3D · non-web` / `3D · web`, plus
+>      `Leave as [TO BE CONFIGURED]` — a legitimate answer here, revisited via
+>      `/settings` once the concept exists.
+>
+> `[TO BE CONFIGURED]` is a valid value for both keys. A wrong `Jolt` on a 2D
+> project is worse than an unset one, because nothing downstream questions it.
+
+- `rendering` and `physics` are engine-typical defaults — tell the user they can
+  be changed later via `/settings` if the project uses a different setup.
+- For Godot **Both**, write `language: "GDScript"` (the primary gameplay
+  language); the C# usage is recorded in `technical-preferences.md`.
+- For Unreal, write `language: "C++"` — or `"Blueprint"` only if the project is
+  Blueprint-primary. Blueprint as a secondary tool does not change this value.
+- For Babylon.js, write `name: "BabylonJS"` and `language: "TypeScript"`.
+
+**`specialists` block** — copy directly from the routing table chosen in
+Section 5 (**A3** in `.claude/skills/setup-engine/references/godot-language-config.md` for Godot):
+
+| Engine / language | `code` | `shader` | `ui` | `additional` |
+|-------------------|--------|----------|------|--------------|
+| Godot — GDScript | godot-gdscript-specialist | godot-shader-specialist | godot-specialist | [godot-gdextension-specialist] |
+| Godot — C# | godot-csharp-specialist | godot-shader-specialist | godot-specialist | [godot-gdextension-specialist] |
+| Godot — Both | godot-gdscript-specialist | godot-shader-specialist | godot-specialist | [godot-csharp-specialist, godot-gdextension-specialist] |
+| Unity | unity-specialist | unity-shader-specialist | unity-ui-specialist | [unity-dots-specialist, unity-addressables-specialist] |
+| Unreal | unreal-specialist | unreal-specialist | ue-umg-specialist | [ue-gas-specialist, ue-blueprint-specialist, ue-replication-specialist] |
+| Babylon.js | babylonjs-specialist | babylonjs-shader-specialist | babylonjs-gui-specialist | [babylonjs-webxr-specialist] |
+
+```yaml
+specialists:
+  code: "<code specialist>"
+  shader: "<shader specialist>"
+  ui: "<ui specialist>"
+  additional: ["<...>"]
+```
+
+**`naming` block** — enum values (NOT the prose form used in
+`technical-preferences.md`). Use the column matching the engine and, for Godot,
+the language:
+
+| Field | Godot GDScript | Godot C# | Unity | Unreal | Babylon.js |
+|-------|----------------|----------|-------|--------|------------|
+| `classes` | PascalCase | PascalCase | PascalCase | PascalCase | PascalCase |
+| `variables` | snake_case | camelCase | camelCase | **PascalCase** | camelCase |
+| `constants` | SCREAMING_SNAKE | PascalCase | SCREAMING_SNAKE | SCREAMING_SNAKE | SCREAMING_SNAKE |
+| `signals` | past_tense | on_event_name | **PascalCase `On<Event>`** | **PascalCase `On<Event>`** | **camelCase `on<Event>Observable`** |
+| `files` | snake_case | PascalCase | PascalCase | PascalCase | kebab-case |
+| `scenes` | snake_case | PascalCase | PascalCase | PascalCase | kebab-case |
+
+> **The Babylon.js column follows Section 5's TypeScript prose.** `signals` is
+> Babylon's `Observable<T>` convention (`onPointerObservable`,
+> `onBeforeRenderObservable`) — Babylon has no signals. `files` is `kebab-case`
+> because Section 5 says "kebab-case or camelCase — pick one"; if the user picks
+> camelCase, write that instead. `scenes` is a category mismatch like Unreal's:
+> a Babylon scene is TypeScript code (or a loaded `.glb`), not an editor scene
+> file, so it takes the `files` value.
+
+> **The Unreal column is sourced, not inherited from the table's generic shape.**
+> `variables: camelCase` and `signals: on_event_name` are the two rows that shape
+> would produce, and both are wrong for Unreal. Checked against this repo's
+> pinned reference: `docs/engine-reference/unreal/` contains **zero** camelCase
+> variable declarations and uses PascalCase throughout (`int32 Health;`,
+> `FVector ServerPosition;`), and the word "signal" **never appears in it at all** —
+> it is Godot vocabulary. Unreal has delegates and events, and the reference's
+> handlers are PascalCase `On<Event>`.
+>
+> Two caveats kept rather than smoothed over. (1) `classes: PascalCase` is
+> **incomplete** for Unreal, not wrong: UE requires a mandatory type prefix
+> (`U`/`A`/`F`/`E`/`I`/`T`) that this enum cannot express, so an Unreal project's
+> coding standards must state it separately. (2) `scenes` is a **category
+> mismatch** — Unreal has Levels and Maps under World Partition, not scenes — left
+> in place because the key is shared across engines and renaming it is a schema
+> change, not a value fix.
+>
+> The blast radius is limited: `naming.*` is currently a
+> **documented-but-unread** setting, so wrong values misinform a human reading
+> `project.yaml` rather than driving any automated check — today. That is a
+> reason to get them right now, while it is cheap.
+
+> **Three further rules for this table.**
+>
+> **The Unity `build` row must not hardcode `-buildTarget StandaloneLinux64`.**
+> A hardcoded target gives every Unity project a **Linux** build command, whatever
+> platform it actually ships on. The row reads `<TARGET>`: **ask the operator for
+> the build target and write the value they give.** The correct `-buildTarget` identifiers
+> are not sourceable from `docs/engine-reference/unity/`, so this skill must not
+> emit one from recall — the same call made for `/security-audit`'s save
+> patterns and for Unity's release dates. A wrong-but-plausible default is worse
+> than an explicit question: it produces a `commands.build` that runs, succeeds,
+> and builds the wrong artifact.
+>
+> **The Godot `build` row must not hardcode `'Linux/X11'` either — same defect,
+> same remedy.** A Godot export preset name is **project-defined**: it is whatever
+> string the operator typed into `export_presets.cfg`, and the shipped defaults are
+> per-platform (`Windows Desktop`, `macOS`, `Web`, `Linux/X11`). Writing
+> `'Linux/X11'` gives a Windows-targeting project a build command that fails with
+> `Unknown export preset`, and gives a project that *does* have a Linux preset a
+> command that silently builds the wrong platform. The row reads `<PRESET>`:
+> **ask the operator which export preset to build and write the value they give**,
+> exactly as the Unity row does. If no presets exist yet — common, since
+> `/setup-engine` usually runs before the Godot project has any — write
+> `[TO BE CONFIGURED]` and say so, rather than guessing a name that does not exist.
+>
+> **The `constants` row must not contradict this skill's own prose.** The table says
+> `SCREAMING_SNAKE` for Unity; the Unity section of this same file says
+> "Constants: PascalCase or UPPER_SNAKE_CASE". Both cannot be authoritative, and
+> an agent following one produces config the other rejects. The row is **left
+> unchanged pending sourcing** rather than picked by preference — neither
+> `docs/engine-reference/unity/` nor `unreal/` contains a SCREAMING_SNAKE constant
+> to confirm or refute it, and the Unreal run flagged the same row as wrong for
+> Unreal on the same grounds. Resolve by adding a naming section to the engine
+> references, then correct table and prose together. Until then, treat
+> `naming.constants` as unverified for Unity and Unreal.
+>
+> **Write that caveat into `project.yaml`, do not leave it here.** On Unity and
+> Unreal, emit the `constants` line with a trailing comment:
+> ```yaml
+> naming:
+>   constants: SCREAMING_SNAKE   # UNVERIFIED — not sourceable from
+>                                # docs/engine-reference/<engine>/; confirm before relying on it
+> ```
+> Without it, a value the skill *knows* is unsourced is recorded as flatly as
+> `classes: PascalCase`, which is sourced, and the reader of the primary config
+> store cannot tell them apart. The `commands` block nine lines below already does
+> exactly this with its `# TODO: confirm these` line — this is the same pattern,
+> applied to the value that needs it just as much.
+
+For Godot **Both**, use the GDScript column — `.gd` files dominate gameplay
+scripting; `.cs` files follow C# conventions per-file (see **A2** in `.claude/skills/setup-engine/references/godot-language-config.md`).
+
+```yaml
+naming:
+  classes: <value>
+  variables: <value>
+  constants: <value>
+  signals: <value>
+  files: <value>
+  scenes: <value>
+```
+
+**`commands` block** — engine-default shell commands, simple-string form:
+
+| Engine | `build` | `test` | `run` | `smoke` |
+|--------|---------|--------|-------|---------|
+| Godot | `godot --headless --export-debug '<PRESET>'` **(ASK — do not default)** | `godot --headless --script tests/gdunit4_runner.gd` | `godot --path . --windowed --resolution 1280x720` | `godot --headless --quit-after 5` |
+| Unity | `Unity -batchmode -quit -projectPath . -buildTarget <TARGET>` **(ASK — do not default)** | `Unity -runTests -projectPath . -testPlatform PlayMode` | `Builds/<Target>/<Game>.exe -screen-width 1280 -screen-height 720 -screen-fullscreen 0` | `Unity -batchmode -quit -projectPath . -executeMethod SmokeCheck.Run` |
+| Babylon.js | `npm run build` | `npm test` | `npm run dev` | `npx tsc --noEmit` |
+
+> **`commands.run` is the one the run-and-observe step depends on.** It must
+> launch the **game**, windowed, at a fixed resolution — never the editor, and
+> never with a headless / batch / null-RHI flag, which exist to skip rendering.
+> `/dev-story` Phase 6 step 4 appends the per-engine capture flags to it
+> (`.claude/docs/run-and-observe.md`). `test` and `smoke` feed the parse check
+> and `/smoke-check`; `build` is the one row you must ask for.
+
+> **YAML quoting rule — applies to EVERY command value.** `yaml-helper.sh` — the
+> parser every config read in this framework goes through — decodes **no**
+> escape sequences: neither `\"` inside a double-quoted scalar nor `''` inside a
+> single-quoted scalar. It takes the first matching quote character as the end of
+> the value and discards the rest, so `"he said \"hi\" now"` parses as
+> `he said \`. Verified against the parser, not inferred. The rule is
+> preventative here — it applies the moment anything does read `commands.*`, and
+> to every other quoted value in `project.yaml` today.
+> Pick the quote style that needs **no escaping**:
+> - value contains a single quote `'` (e.g. the Godot `build` above) → wrap it in
+>   a **double-quoted** YAML scalar: `"... 'Linux/X11' ..."`
+> - value contains a double quote `"` (e.g. the Unreal `test`/`smoke` below) →
+>   wrap it in a **single-quoted** YAML scalar: `'... "Quit" ...'`
+> - value contains neither → use a double-quoted scalar for consistency.
+> Never use a quote style that forces an escape (`\"` or `''`) — the parser
+> truncates the value at the escape. A value containing BOTH quote types cannot
+> be represented for this parser; rewrite the command to drop one.
+
+**Babylon.js** — write the table row as-is; there is nothing to ask. The web
+build has a single target (Vite emits `dist/`), so `build` carries no platform
+placeholder. None of the four values contains a quote, so all take plain
+double-quoted scalars. Each `npm` command names a `package.json` script
+(`build`, `test`, `dev`), which §7.5 and `/test-setup` create —
+`project-coherence.sh` reports any that are missing. `run` starts the Vite dev
+server, not a window: `.claude/docs/run-and-observe.md` covers how the
+run-and-observe step opens it in a browser at 1280x720 and captures it. `smoke`
+is a whole-project type-check — it finishes in seconds and fails on the errors
+that would stop the page loading.
+
+```yaml
+commands:
+  build: "npm run build"
+  test: "npm test"
+  run: "npm run dev"
+  smoke: "npx tsc --noEmit"
+```
+
+**Godot / Unity** — write the table values directly, substituting the operator's
+answer for `<PRESET>` / `<TARGET>`. Godot's `build` contains a single quote, so it
+takes a double-quoted scalar (`Windows Desktop` below is the *example* answer, not
+a default — write what the operator said):
+
+```yaml
+commands:
+  build: "godot --headless --export-debug 'Windows Desktop'"
+  test: "godot --headless --script tests/gdunit4_runner.gd"
+  run: "godot --path . --windowed --resolution 1280x720"
+  smoke: "godot --headless --quit-after 5"
+```
+
+> **Also write `engine.path` if the editor is not on `PATH`.** These commands name
+> the executable bare, which assumes it resolves — and on Windows none of the three
+> editor-based engines installs onto `PATH` by default. (Babylon.js has no editor;
+> its commands go through `npm`, so omit `engine.path` for it.) Ask for or probe the install location and
+> record it:
+>
+> ```yaml
+> engine:
+>   path: "C:/Program Files/Epic Games/UE_5.7"   # omit if the editor is on PATH
+> ```
+>
+> **This is not cosmetic.** Without it, an agent reports *"no editor on this
+> machine"* and ships C++ it never compiled — on a machine where that engine WAS
+> installed. Nothing in the project told it where to look, so absence of a path read
+> as absence of an engine.
+
+For **Unreal**, UE build/test commands vary by version and project setup. Write
+best-effort values and add a `# TODO` comment so the user knows to confirm them.
+The `test`/`smoke` commands embed double quotes, so they take single-quoted
+scalars:
+
+```yaml
+commands:
+  # TODO: confirm these for your UE version and project — adjust via /settings
+  build: 'RunUAT.bat BuildCookRun -project=<project>.uproject -platform=Win64 -build -cook'
+  test: 'UnrealEditor-Cmd.exe <project>.uproject -ExecCmds="Automation RunTests <project>; Quit" -unattended -nullrhi'
+  run: 'UnrealEditor.exe <project>.uproject -game -windowed -ResX=1280 -ResY=720'
+  smoke: 'UnrealEditor-Cmd.exe <project>.uproject -game -nullrhi -unattended -ExecCmds="Quit"'
+```
+
+**Two details are load-bearing.** `smoke` needs `-game`: without it
+`UnrealEditor-Cmd` boots the *editor*, where a bare `Quit` console command only
+ends a play-in-editor session — the process stays resident and the command
+never returns; with `-game` the same line boots headless and exits in seconds.
+`test` needs the `; Quit` inside the `Automation` string: the automation
+runner handles that trailing `Quit` itself and exits the editor once the tests
+finish, and without it the run also never returns.
+
+### 5.5.2 Write the blocks to `project.yaml`
+
+Show the user the full set of four blocks and ask:
+
+> "May I write the `engine`, `specialists`, `naming`, and `commands` blocks to `project.yaml`?"
+
+Wait for confirmation, then apply based on the file's current state:
+
+- **`project.yaml` does not exist** — create it with the Write tool using this
+  v1.1 template (the four blocks appended after `framework`; replace `<...>` and
+  the date):
+
+  ```yaml
+  # CCGS project configuration — single source of truth for project settings.
+  # Schema: grep the `## <key>` section of .claude/docs/effects-map.md —
+  # it is ~31k tokens whole, ~900 per section. Do not open it entire.
+
+  schema_version: 1
+
+  framework:
+    version: 1.1.1
+    last_upgraded: <today's date>
+
+  engine:
+    name: "<...>"
+    version: "<...>"
+    language: "<...>"
+    rendering: "<...>"
+    physics: "<...>"
+
+  specialists:
+    code: "<...>"
+    shader: "<...>"
+    ui: "<...>"
+    additional: ["<...>"]
+
+  naming:
+    classes: <...>
+    variables: <...>
+    constants: <...>
+    signals: <...>
+    files: <...>
+    scenes: <...>
+
+  commands:
+    build: "<...>"
+    test: "<...>"
+    run: "<...>"
+    smoke: "<...>"
+  ```
+
+  Do not seed `modes.review_mode` here. It is a rigor-fronted knob — `modes.rigor`
+  supplies its value, so an explicit value would shadow the rigor expansion and pin
+  the review mode regardless of the project's rigor. Test Y.6 locks this in.
+
+- **`project.yaml` exists** — Read it first (the Edit tool requires the file to
+  have been read this session), then, processing the blocks in the order
+  `engine` → `specialists` → `naming` → `commands`, for each block:
+  - **Block absent** — insert the whole block, appended after the last existing
+    top-level block.
+  - **Block already present** (a re-run of `/setup-engine`) — Edit the existing
+    keys in place, and add any keys the block is missing (a partial block must
+    end up with its full key set). Do NOT add a second copy of the block.
+
+Preserve all other content in `project.yaml` (`schema_version`, `framework`,
+`modes`, `project`, etc.) — only the four blocks are touched.
+
+### 5.5.3 Verify the dual-write
+
+Read `project.yaml` back and confirm the four blocks are present and that
+`engine.name`, `engine.language`, and the naming values match what was written
+to `technical-preferences.md`. If they diverge, report the discrepancy to the
+user and stop — a split config corrupts skill and hook reads.
+
+---
+
 ## 6. Determine Knowledge Gap
 
 Check whether the engine version is likely beyond the LLM's training data.
 
-**Known approximate coverage** (update this as models change):
-- LLM knowledge cutoff: **May 2025**
-- Godot: training data likely covers up to ~4.3
-- Unity: training data likely covers up to ~2023.x / early 6000.x
-- Unreal: training data likely covers up to ~5.3 / early 5.4
+**Known approximate coverage** — *last re-checked 2026-08-28*:
+- LLM knowledge cutoff: **May 2026**
+- Godot: training data likely covers up to ~4.6
+- Unity: training data likely covers up to ~6000.x
+- Unreal: training data likely covers up to ~5.5
+- Babylon.js: training data likely covers up to ~8.x / early 9.x (9.0 shipped March 2026; later 9.x minors are post-cutoff)
+
+> **This table goes stale silently, and a stale table fails in the dangerous
+> direction only if it is too *new*.** A cutoff left unchanged for a year after
+> it stopped being true over-classifies risk — safe, but every project then pays
+> for full reference docs it may not have needed.
+> The opposite error is the harmful one: a cutoff claimed *later* than the model's
+> actual one marks post-cutoff versions LOW RISK and suppresses the reference
+> docs that exist to stop invented APIs.
+>
+> **If the date above is more than six months old, do not trust it.** Say so, and
+> treat the engine version as `HIGH RISK` regardless of the comparison — an
+> unverifiable cutoff is not a cutoff that was met.
 
 Compare the user's chosen version against these baselines:
 
@@ -323,6 +907,54 @@ Inform the user which category they're in and why.
 ---
 
 ## 7. Populate Engine Reference Docs
+
+### First: does a reference set already exist for this engine?
+
+**Check before doing anything else.** The template ships
+`docs/engine-reference/godot/`, `unity/`, `unreal/` and `babylonjs/` **already populated**, so
+"the directory exists and pins a version" is the state of *every* fresh project,
+not an edge case. Both branches below say "create", and following either one
+literally on a pre-populated directory either overwrites curated content or
+leaves `project.yaml` and the CLAUDE.md-imported reference disagreeing.
+
+Read `docs/engine-reference/<engine>/VERSION.md` and compare its
+**Engine Version** to the version chosen in Section 3:
+
+- **No directory, or no `VERSION.md`** → create, using the risk branch below.
+- **Same version** → nothing to do. Refresh `Last Docs Verified` only if you
+  actually re-verified against the docs this run. Do not restamp a date you did
+  not check. **Still add the `Installed at pin time` row from Section 3 if the
+  file has none** — `project-coherence.sh` reports its absence as `[DIFFERS]`.
+- **Directory pins an OLDER version than the one chosen** → **update, do not
+  replace.** This is the common case.
+  1. Edit `VERSION.md` in place: new **Engine Version**, new **Project Pinned**
+     and **Last Docs Verified**, the `Installed at pin time` row from Section 3,
+     and a new row in the post-cutoff timeline for each version added.
+  2. **Append** to `breaking-changes.md`, `deprecated-apis.md` and
+     `current-best-practices.md` under a heading naming the version span
+     (`## 4.6 → 4.7`). Never truncate the older spans — a project migrating
+     across two versions still needs the earlier one.
+  3. Re-grade the older timeline rows if the cutoff moved past them.
+- **Directory pins a NEWER version than the one chosen** → stop and ask. Someone
+  pinned forward deliberately, or the version choice is wrong. Do not silently
+  downgrade a curated reference.
+
+### Sourcing rule for everything written in this section
+
+**Never fill a gap from training data. Write the gap down instead.**
+
+The whole purpose of these files is to be the thing agents consult *instead of*
+their training data. A confidently wrong entry here is worse than no entry: it
+produces work that looks verified and is not.
+
+- Every claim must come from a page you fetched this run. Record the URL.
+- If the official docs do not state something the template asks for — a release
+  date, a subsystem's behaviour, web-export specifics — write
+  **`NOT SOURCEABLE — <what>, not stated at <url>`** and move on.
+- A `NOT SOURCEABLE` line is a successful outcome, not a failure to finish.
+- Do not infer one fact from an adjacent one. "The migration guide lists no
+  physics change" is not "the physics default is unchanged"; if you record the
+  inference, label it as an inference and name what it rests on.
 
 ### If WITHIN training data (LOW RISK):
 
@@ -387,21 +1019,275 @@ Wait for confirmation before writing any files.
 
 ---
 
-## 8. Update CLAUDE.md Import
+## 7.5 Scaffold the Engine Project
 
-Ask: "May I update the `@` import in `CLAUDE.md` to point to the new engine reference?"
+**Without this step the framework produces source files no engine can open.**
+`/dev-story` writes `.gd`/`.cs`/`.cpp` under the resolved code root, and the `minimal` path
+advertises "four steps to running code" — but nothing anywhere created a project
+for the engine to load. Verified by grep across every skill: no `project.godot`,
+no Unity project, no `.uproject` was ever written. The files were real and
+orphaned.
 
-Wait for confirmation, then update the `@` import under "Engine Version Reference" to point to the
-correct engine:
+### Godot — write `project.godot` if one is absent
+
+**Never overwrite an existing `project.godot`.** If the file is already there,
+say so and skip to Section 8 — the developer has a project and its settings are
+theirs.
+
+Show the proposed file, then ask: *"May I create `project.godot` at the repo
+root?"* On approval, write:
+
+```ini
+config_version=5
+
+[application]
+
+config/name="<project name>"
+config/features=PackedStringArray("<major.minor>", "<renderer feature>")
+
+[rendering]
+
+renderer/rendering_method="<rendering method>"
+```
+
+Fill it from decisions already made — do not ask again:
+
+| Field | Source |
+|-------|--------|
+| `config/name` | the brief's working title, else the repo directory name |
+| `<major.minor>` | `engine.version` from Section 3, major and minor only (`4.7.2` → `4.7`) |
+| `<renderer feature>` / `<rendering method>` | the `rendering` value chosen in Section 5.5.1 — Compatibility → `"GL Compatibility"` / `gl_compatibility`; Forward+ → `"Forward Plus"` / `forward_plus`; Mobile → `"Mobile"` / `mobile` |
+
+**Leave `run/main_scene` unset.** There is no scene yet at engine-setup time.
+Add a comment saying `/dev-story` or the developer sets it once a scene exists;
+an empty project with no main scene opens fine in the editor.
+
+**Then verify, and report what the verification actually was.** If the engine
+binary was found in Section 3, run its headless import
+(`godot --headless --path . --import`) and report the result. If the binary was
+not found, or its version differs from the pinned one, write
+**`project.godot NOT VERIFIED — <reason>`**. The `config_version` and feature
+strings are stable across Godot 4.x, but "stable in the versions I know" is not
+the same as "checked against the version you pinned", and only the run
+establishes the latter.
+
+### Babylon.js — write the Vite project if `package.json` is absent
+
+**Never overwrite an existing `package.json`, `tsconfig.json`, `vite.config.ts`
+or `index.html`.** If `package.json` is already there, say so, confirm it has
+`dev`, `build` and `test`-able scripts matching §5.5.1's `commands` (add missing
+scripts only with approval), and skip to Section 8.
+
+A Vite + TypeScript project is a handful of plain-text files, so unlike Unity
+and Unreal it *can* be written here — but **no version number is typed from
+recall.** The files carry no `dependencies`; `npm install` writes them, resolving
+the pinned version itself. Show the proposed files, then ask: *"May I create
+`package.json`, `tsconfig.json`, `vite.config.ts`, `index.html` and
+`src/main.ts`, then run `npm install`?"* On approval, write:
+
+`package.json` (`name` from the brief's working title, else the repo directory
+name, lowercased and hyphenated):
+
+```json
+{
+  "name": "<project-name>",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  }
+}
+```
+
+`tsconfig.json` — the flags are the ones
+`docs/engine-reference/babylonjs/current-best-practices.md` §Project Setup
+mandates (`strict`, `noUncheckedIndexedAccess`) or recommends:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "tests"]
+}
+```
+
+`vite.config.ts`:
+
+```typescript
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  server: { port: 5173, strictPort: true },
+});
+```
+
+`index.html` — one full-window canvas and the module entry:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><project name></title>
+    <style>html, body { margin: 0; height: 100%; overflow: hidden; } #renderCanvas { width: 100%; height: 100%; display: block; touch-action: none; }</style>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+```
+
+`src/main.ts` — the Engine/Scene pattern from `current-best-practices.md`
+§Scene Construction, nothing more. On `WebGPU (WebGL2 fallback)` use that file's
+`WebGPUEngine.IsSupportedAsync` branch (`modules/rendering.md`) instead of a bare
+`Engine`:
+
+```typescript
+import { Engine } from "@babylonjs/core/Engines/engine";
+import { Scene } from "@babylonjs/core/scene";
+import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
+import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+
+const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
+const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+const scene = new Scene(engine);
+const camera = new FreeCamera("camera", new Vector3(0, 5, -10), scene);
+camera.setTarget(Vector3.Zero());
+camera.attachControl(canvas, true);
+new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+
+engine.runRenderLoop(() => scene.render());
+window.addEventListener("resize", () => engine.resize());
+```
+
+`preserveDrawingBuffer: true` is kept deliberately: it is what lets the
+run-and-observe step read the canvas back (`.claude/docs/run-and-observe.md`).
+
+Then install, letting npm resolve and record every version:
+
+```bash
+npm install --save-dev vite typescript
+npm install @babylonjs/core@<engine.version>
+npm install @babylonjs/havok          # only when engine.physics is Havok
+```
+
+**Leave the scene's content, a scene-select URL parameter, and Havok
+initialisation to `/dev-story`.** How Havok's `.wasm` is served under Vite is
+not covered by `docs/engine-reference/babylonjs/packages/havok.md`; record it as
+`NOT SOURCEABLE` rather than adding bundler config from recall.
+
+**Then verify, and report what the verification actually was.** If `npm` was
+found in Section 3, run `npm run build` and report the result. If `npm` is not
+available, or `npm install` failed, write **`Babylon.js project NOT VERIFIED —
+<reason>`**.
+
+No `test` script is written here — `/test-setup` adds it with Vitest. Until
+then Section 8.5 reports `commands.test` (`npm test`) as `[DIFFERS]`; that is
+expected, and the fix is `/test-setup`, not a placeholder script.
+
+### Unity and Unreal — instruct, do not fabricate
+
+A Unity project and an `.uproject` are editor-generated and span many files,
+several of them binary or machine-specific. This repo cannot source their
+correct contents, and a hand-written scaffold would be the exact failure
+Section 7's sourcing rule forbids — something that looks finished and is quietly
+wrong.
+
+Tell the user, in one short block, that CCGS does not create the project for
+these engines and they should create it first:
+
+- **Unity** — create the project in Unity Hub at the repo root, choosing the
+  template matching the 2D/3D answer from Section 2, then re-run `/setup-engine`.
+- **Unreal** — create the project in the Epic launcher or via `UnrealEditor`,
+  then re-run.
+
+Report the outcome in the Section 12 summary either way — created, already
+present, or "not created, engine requires the editor" — so the user leaves this
+skill knowing whether a runnable project exists.
+
+> **Deliberately not a `project.yaml` key.** An `engine.project_scaffolded` flag
+> would be written here and read by nothing, which is a dead setting — the same
+> writer-without-reader defect the config gates exist to catch. The filesystem is
+> the source of truth: any skill that needs to know globs for `project.godot`,
+> `*.uproject`, `ProjectSettings/ProjectVersion.txt`, or (Babylon.js) a
+> `package.json` depending on `@babylonjs/core`.
+
+---
+
+## 8. Verify the CLAUDE.md Import
+
+**This import was already written in Section 4 — do not edit it again and do not
+ask again.** Section 4 sets it as part of the same CLAUDE.md write, anchored to
+the `ENGINE-REFERENCE-IMPORT` marker. This step only confirms the result.
+
+Read `CLAUDE.md` and confirm the line under the marker reads:
 
 ```markdown
-## Engine Version Reference
-
 @docs/engine-reference/<engine>/VERSION.md
 ```
 
-If the previous import pointed to a different engine (e.g., switching from
-Godot to Unity), update it.
+with `<engine>` the engine just configured. If it still points at a different
+engine, Section 4 did not complete — go back and finish it rather than patching
+the line here.
+
+> **Why this is a check and not a second write.** Repeating the edit here with
+> its own approval prompt would ask the user twice for one change, and the second
+> ask would be for work already done. Locate the line by its marker, never by the
+> `## Engine Version Reference` heading — the marker exists precisely so the line
+> can still be found when the heading moves or is reworded.
+
+---
+
+## 8.5 Read Back What You Just Wrote
+
+This section exists because prose did not hold. Section 5.5.1's rendering/physics
+table already carries an emphatic, source-cited warning naming the two mistakes
+most often made here -- and it is still entirely possible to make **both** of
+them anyway, writing `Forward+` and `Jolt` for a 2D browser game. Section 3's
+`Installed at pin time` row is just as easy to drop silently, because a missing
+row leaves no trace.
+
+Neither is fixed by adding more instructions. They are fixed by verifying the
+files after writing them:
+
+```bash
+bash .claude/scripts/project-coherence.sh
+```
+
+It compares `project.yaml` against `docs/engine-reference/<engine>/VERSION.md`,
+against `project.godot` (Babylon.js: `package.json` and `src/`), and against the
+engine binary actually on PATH (Babylon.js: the `@babylonjs/core` npm resolved
+into `node_modules/`), and it checks that the files `commands.build` and
+`commands.test` name exist (Babylon.js: that every `npm` command's script is
+defined in `package.json`).
+
+**Report every `[DIFFERS]` line to the user and resolve it before finishing.**
+Each one means two files this skill just wrote disagree, or describe something
+that is not there.
+
+**`[NOT CHECKED]` is not a pass.** Each such line names why a comparison could
+not be made -- an absent binary, a missing `project.godot`, no `node_modules/`. Say which ones
+applied. A comparison that could not run has not established agreement.
+
+The script emits observations and never a verdict, per the convention in
+CLAUDE.md. The judgement is yours and the user's.
 
 ---
 
@@ -463,7 +1349,7 @@ any "must migrate" items.
 
 ### Step 3 — Pre-Upgrade Audit
 
-Scan `src/` for code that uses APIs known to be deprecated or changed in the
+Scan the **code root** (resolve per `.claude/docs/code-root-resolution.md`) for code that uses APIs known to be deprecated or changed in the
 target version:
 
 - Use Grep to search for deprecated API names extracted from the migration
@@ -492,8 +1378,8 @@ Recommended migration order (dependency-sorted):
   ...
 ```
 
-If no deprecated APIs are found in `src/`, report: "No deprecated API usage
-found in src/ — upgrade may be low-risk."
+If no deprecated APIs are found in the code root, report: "No deprecated API usage
+found in the code root — upgrade may be low-risk."
 
 ### Step 4 — Confirm Before Updating
 
@@ -523,6 +1409,10 @@ After confirmation:
 2. If `breaking-changes.md` or `deprecated-apis.md` exist in the engine
    reference directory, append the new version's changes to those files.
 
+3. If `project.yaml` exists at the repo root and has an `engine` block, Read it
+   first, then update `engine.version` to `[new-version]` so the primary config
+   store stays in sync with VERSION.md.
+
 ### Step 6 — Post-Upgrade Reminder
 
 After updating VERSION.md, output:
@@ -550,15 +1440,31 @@ After setup is complete, output:
 Engine Setup Complete
 =====================
 Engine:          [name] [version]
-Language:        [GDScript | C# | GDScript + C# | C# | C++ + Blueprint]
+Language:        [GDScript | C# | GDScript + C# | C# | C++ + Blueprint | TypeScript]
 Knowledge Risk:  [LOW/MEDIUM/HIGH]
 Reference Docs:  [created/skipped]
 CLAUDE.md:       [updated]
 Tech Prefs:      [created/updated]
+project.yaml:    [created/updated]
 Agent Config:    [verified]
 
 Next Steps:
 1. Review docs/engine-reference/<engine>/VERSION.md
+```
+
+Then print **one** Next-Steps list, matching the resolved `workflow` tier:
+
+**`minimal` — the lean 4-step floor (you are on step 1):**
+```
+2. Run /brainstorm to produce your one-page design/game-brief.md (the lean-tier design artifact)
+3. Run /create-stories to turn the brief's MVP list into stories
+4. Run /dev-story — first line of game code
+```
+(No `/map-systems`, `/design-system`, `/prototype`, or `/sprint-plan` at
+`minimal` — the brief replaces the GDDs and its build order is the plan.)
+
+**`standard` / `full` — the full pipeline:**
+```
 2. [If from /brainstorm] Run /map-systems to decompose your concept into individual systems
 3. [If from /brainstorm] Run /design-system to author per-system GDDs (guided, section-by-section)
 4. [If from /brainstorm] Run /prototype [core-mechanic] to validate the core idea before writing GDDs
@@ -573,144 +1479,27 @@ Verdict: **COMPLETE** — engine configured and reference docs populated.
 ## Guardrails
 
 - NEVER guess an engine version — always verify via WebSearch or user confirmation
+- `project.yaml` is the primary config store (v1.1). Always dual-write engine
+  config to BOTH `project.yaml` (primary) and `technical-preferences.md` (legacy
+  mirror). If the two ever diverge, `project.yaml` is authoritative.
 - NEVER overwrite existing reference docs without asking — append or update
 - If reference docs already exist for a different engine, ask before replacing
 - Always show the user what you're about to change before making CLAUDE.md edits
 - If WebSearch returns ambiguous results, show the user and let them decide
-- When the user chose **GDScript**: copy the GDScript CLAUDE.md template from Appendix A1 exactly. NEVER add "C++ via GDExtension" to the Language field. GDScript projects may use GDExtension, but it is not a primary project language. The `godot-gdextension-specialist` in the routing table is available for when native extensions are needed — it does not make C++ a project language.
+- When the user chose **GDScript**: copy the GDScript CLAUDE.md template from **A1** in `.claude/skills/setup-engine/references/godot-language-config.md` exactly. NEVER add "C++ via GDExtension" to the Language field. GDScript projects may use GDExtension, but it is not a primary project language. The `godot-gdextension-specialist` in the routing table is available for when native extensions are needed — it does not make C++ a project language.
 
 ---
 
 ## Appendix A — Godot Language Configuration
 
-All Godot-specific variants for language-dependent configuration. Referenced from Sections 4 and 5 — only relevant when Godot is the chosen engine. Use the subsection matching the language chosen in Section 4.
+Moved out of this file so it costs nothing on non-Godot runs.
 
----
+**When the chosen engine is Godot, read**
+`.claude/skills/setup-engine/references/godot-language-config.md`
+and use the subsection for the chosen language:
 
-### A1. CLAUDE.md Technology Stack Templates
+- **A1** — CLAUDE.md Technology Stack templates (GDScript / C# / Both)
+- **A2** — naming conventions
+- **A3** — engine specialist routing and file-extension tables
 
-**GDScript:**
-```markdown
-- **Engine**: Godot [version]
-- **Language**: GDScript
-- **Build System**: SCons (engine), Godot Export Templates
-- **Asset Pipeline**: Godot Import System + custom resource pipeline
-```
-
-> **Guardrail**: When using this GDScript template, write the Language field as exactly "`GDScript`" — no additions. Do NOT append "C++ via GDExtension" or any other language. The C# template below includes GDExtension because C# projects commonly wrap native code; GDScript projects do not.
-
-**C#:**
-```markdown
-- **Engine**: Godot [version]
-- **Language**: C# (.NET 8+, primary), C++ via GDExtension (native plugins only)
-- **Build System**: .NET SDK + Godot Export Templates
-- **Asset Pipeline**: Godot Import System + custom resource pipeline
-```
-
-**Both — GDScript + C#:**
-```markdown
-- **Engine**: Godot [version]
-- **Language**: GDScript (gameplay/UI scripting), C# (performance-critical systems), C++ via GDExtension (native only)
-- **Build System**: .NET SDK + Godot Export Templates
-- **Asset Pipeline**: Godot Import System + custom resource pipeline
-```
-
----
-
-### A2. Naming Conventions
-
-**GDScript:**
-- Classes: PascalCase (e.g., `PlayerController`)
-- Variables/functions: snake_case (e.g., `move_speed`)
-- Signals: snake_case past tense (e.g., `health_changed`)
-- Files: snake_case matching class (e.g., `player_controller.gd`)
-- Scenes: PascalCase matching root node (e.g., `PlayerController.tscn`)
-- Constants: UPPER_SNAKE_CASE (e.g., `MAX_HEALTH`)
-
-**C#:**
-- Classes: PascalCase (`PlayerController`) — must also be `partial`
-- Public properties/fields: PascalCase (`MoveSpeed`, `JumpVelocity`)
-- Private fields: `_camelCase` (`_currentHealth`, `_isGrounded`)
-- Methods: PascalCase (`TakeDamage()`, `GetCurrentHealth()`)
-- Signal delegates: PascalCase + `EventHandler` suffix (`HealthChangedEventHandler`)
-- Files: PascalCase matching class (`PlayerController.cs`)
-- Scenes: PascalCase matching root node (`PlayerController.tscn`)
-- Constants: PascalCase (`MaxHealth`, `DefaultMoveSpeed`)
-
-**Both — GDScript + C#:**
-Use GDScript conventions for `.gd` files and C# conventions for `.cs` files. Mixed-language files do not exist — the boundary is per-file. When in doubt about which language a new system should use, ask the user and record the decision in `technical-preferences.md`.
-
----
-
-### A3. Engine Specialists Routing
-
-**GDScript:**
-```markdown
-## Engine Specialists
-- **Primary**: godot-specialist
-- **Language/Code Specialist**: godot-gdscript-specialist (all .gd files)
-- **Shader Specialist**: godot-shader-specialist (.gdshader files, VisualShader resources)
-- **UI Specialist**: godot-specialist (no dedicated UI specialist — primary covers all UI)
-- **Additional Specialists**: godot-gdextension-specialist (GDExtension / native C++ bindings only)
-- **Routing Notes**: Invoke primary for architecture decisions, ADR validation, and cross-cutting code review. Invoke GDScript specialist for code quality, signal architecture, static typing enforcement, and GDScript idioms. Invoke shader specialist for material design and shader code. Invoke GDExtension specialist only when native extensions are involved.
-
-### File Extension Routing
-
-| File Extension / Type | Specialist to Spawn |
-|-----------------------|---------------------|
-| Game code (.gd files) | godot-gdscript-specialist |
-| Shader / material files (.gdshader, VisualShader) | godot-shader-specialist |
-| UI / screen files (Control nodes, CanvasLayer) | godot-specialist |
-| Scene / prefab / level files (.tscn, .tres) | godot-specialist |
-| Native extension / plugin files (.gdextension, C++) | godot-gdextension-specialist |
-| General architecture review | godot-specialist |
-```
-
-**C#:**
-```markdown
-## Engine Specialists
-- **Primary**: godot-specialist
-- **Language/Code Specialist**: godot-csharp-specialist (all .cs files)
-- **Shader Specialist**: godot-shader-specialist (.gdshader files, VisualShader resources)
-- **UI Specialist**: godot-specialist (no dedicated UI specialist — primary covers all UI)
-- **Additional Specialists**: godot-gdextension-specialist (GDExtension / native C++ bindings only)
-- **Routing Notes**: Invoke primary for architecture decisions, ADR validation, and cross-cutting code review. Invoke C# specialist for code quality, [Signal] delegate patterns, [Export] attributes, .csproj management, and C#-specific Godot idioms. Invoke shader specialist for material design and shader code. Invoke GDExtension specialist only when native C++ plugins are involved.
-
-### File Extension Routing
-
-| File Extension / Type | Specialist to Spawn |
-|-----------------------|---------------------|
-| Game code (.cs files) | godot-csharp-specialist |
-| Shader / material files (.gdshader, VisualShader) | godot-shader-specialist |
-| UI / screen files (Control nodes, CanvasLayer) | godot-specialist |
-| Scene / prefab / level files (.tscn, .tres) | godot-specialist |
-| Project config (.csproj, NuGet) | godot-csharp-specialist |
-| Native extension / plugin files (.gdextension, C++) | godot-gdextension-specialist |
-| General architecture review | godot-specialist |
-```
-
-**Both — GDScript + C#:**
-```markdown
-## Engine Specialists
-- **Primary**: godot-specialist
-- **GDScript Specialist**: godot-gdscript-specialist (.gd files — gameplay/UI scripts)
-- **C# Specialist**: godot-csharp-specialist (.cs files — performance-critical systems)
-- **Shader Specialist**: godot-shader-specialist (.gdshader files, VisualShader resources)
-- **UI Specialist**: godot-specialist (no dedicated UI specialist — primary covers all UI)
-- **Additional Specialists**: godot-gdextension-specialist (GDExtension / native C++ bindings only)
-- **Routing Notes**: Invoke primary for cross-language architecture decisions and which systems belong in which language. Invoke GDScript specialist for .gd files. Invoke C# specialist for .cs files and .csproj management. Prefer signals over direct cross-language method calls at the boundary.
-
-### File Extension Routing
-
-| File Extension / Type | Specialist to Spawn |
-|-----------------------|---------------------|
-| Game code (.gd files) | godot-gdscript-specialist |
-| Game code (.cs files) | godot-csharp-specialist |
-| Cross-language boundary decisions | godot-specialist |
-| Shader / material files (.gdshader, VisualShader) | godot-shader-specialist |
-| UI / screen files (Control nodes, CanvasLayer) | godot-specialist |
-| Scene / prefab / level files (.tscn, .tres) | godot-specialist |
-| Project config (.csproj, NuGet) | godot-csharp-specialist |
-| Native extension / plugin files (.gdextension, C++) | godot-gdextension-specialist |
-| General architecture review | godot-specialist |
-```
+**Load discipline.** On any engine other than Godot, **never load it** — nothing in Sections 4, 5 or 5.5 needs it, and reading it anyway spends the tokens the split exists to save. On Godot, read it once when you first reach Section 4 and keep using it for Sections 5 and 5.5; do not re-read it at each reference.

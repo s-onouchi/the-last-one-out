@@ -3,7 +3,7 @@
 > **How to go from zero to a shipped game using the Agent Architecture.**
 >
 > This guide walks you through every phase of game development using the
-> 49-agent system, 73 slash commands, and 12 automated hooks. It assumes you
+> 53-agent system, 74 slash commands, and 12 automated hooks. It assumes you
 > have Claude Code installed and are working from the project root.
 >
 > The pipeline has 7 phases. Each phase has a formal gate (`/gate-check`)
@@ -88,9 +88,10 @@ At any point, run:
 /help
 ```
 
-This reads your current phase from `production/stage.txt`, checks which
-artifacts exist, and tells you exactly what to do next. It distinguishes
-between REQUIRED next steps and OPTIONAL opportunities.
+This reads your current phase from `project.stage` in `project.yaml` (falling
+back to `production/stage.txt`), checks which artifacts exist, and tells you
+exactly what to do next. It distinguishes between REQUIRED next steps and
+OPTIONAL opportunities.
 
 ### Step 5: Create Your Directory Structure
 
@@ -155,7 +156,7 @@ with defined pillars and a player journey. This is where you figure out
      |                                        |                    |
      v                                        v                    v
   10 concepts     Concept doc with       Validation          Engine pinned in
-  MDA analysis    pillars, MDA,          of concept          technical-preferences.md
+  MDA analysis    pillars, MDA,          of concept          project.yaml
   Player motiv.   core loop, USP         document
                                                                    |
                                                                    v
@@ -230,8 +231,9 @@ Or with a specific engine:
 
 **What /setup-engine does:**
 
-- Populates `.claude/docs/technical-preferences.md` with naming conventions,
-  performance budgets, and engine-specific defaults
+- Writes engine, language, specialists, naming conventions, and performance
+  budgets to `project.yaml` (the source of truth) and mirrors them to
+  `.claude/docs/technical-preferences.md` (the human-readable legacy fallback)
 - Detects knowledge gaps (engine version newer than LLM training data) and
   advises cross-referencing `docs/engine-reference/`
 - Creates version-pinned reference docs in `docs/engine-reference/`
@@ -239,7 +241,8 @@ Or with a specific engine:
 **Why this matters:** Once you set the engine, the system knows which
 engine-specialist agents to use. If you pick Godot, agents like
 `godot-specialist`, `godot-gdscript-specialist`, and `godot-shader-specialist`
-become your go-to experts.
+become your go-to experts; pick Babylon.js (`/setup-engine babylonjs 9.5`) and
+`babylonjs-specialist` leads, with the WebXR, shader, and GUI sub-specialists.
 
 ### Step 1.4: Decompose Your Concept Into Systems
 
@@ -268,7 +271,7 @@ production.
 
 **Requirements to pass:**
 
-- Engine configured in `technical-preferences.md`
+- Engine configured in `project.yaml` (`engine.*`)
 - `design/gdd/game-concept.md` exists with pillars
 - `design/gdd/systems-index.md` exists with dependency ordering
 
@@ -357,7 +360,8 @@ Before the next system starts, validate the current one:
 /design-review design/gdd/combat-system.md
 ```
 
-Checks all 8 sections for completeness, formula clarity, edge case resolution,
+Checks the sections your `modes.workflow` tier requires (all 8 at `full`, 5 at
+`standard`) for completeness, formula clarity, edge case resolution,
 bidirectional dependencies, and testable acceptance criteria.
 
 **Verdict:** APPROVED / NEEDS REVISION / MAJOR REVISION. Only APPROVED GDDs
@@ -599,8 +603,9 @@ Three modes: screen/flow, HUD, and interaction patterns. Output goes to
 interaction map, data requirements, events fired, accessibility, localization.
 
 Reads your `accessibility-requirements.md` (written in Phase 3) and your
-input method config from `technical-preferences.md` to drive accessibility
-and input coverage checks — no need to re-specify them per screen.
+input method config from `project.yaml` (the `platform.*` block, falling back
+to `technical-preferences.md`) to drive accessibility and input coverage
+checks — no need to re-specify them per screen.
 
 > **Tip:** `/design-system` emits a 📌 UX Flag for every system with UI
 > requirements. Use those flags as a checklist for which screens need specs.
@@ -1156,7 +1161,8 @@ These topics apply across all phases.
 Director gates are specialist agents that review your work at key workflow steps.
 By default they run at every checkpoint. You can control how much review you get.
 
-**Set your review intensity once during `/start`.** Saved to `production/review-mode.txt`.
+**Set your review intensity once during `/start`.** Saved to `modes.review_mode`
+in `project.yaml` (mirrored to `production/review-mode.txt` as a legacy fallback).
 
 | Mode | What runs | Best for |
 |------|-----------|----------|
@@ -1172,7 +1178,7 @@ By default they run at every checkpoint. You can control how much review you get
 ```
 
 The `--review` flag works on all gate-using skills. Change the global mode at any
-time by editing `production/review-mode.txt` directly or re-running `/start`.
+time by editing `modes.review_mode` in `project.yaml` or re-running `/start`.
 
 Full gate definitions and check pattern: `.claude/docs/director-gates.md`
 
@@ -1227,7 +1233,9 @@ Tier 3 (Specialists):  gameplay-programmer, engine-programmer,
                        unity-shader-specialist, unity-addressables-specialist,
                        unity-ui-specialist, unreal-specialist,
                        ue-blueprint-specialist, ue-gas-specialist,
-                       ue-replication-specialist, ue-umg-specialist
+                       ue-replication-specialist, ue-umg-specialist,
+                       babylonjs-specialist, babylonjs-webxr-specialist,
+                       babylonjs-shader-specialist, babylonjs-gui-specialist
 ```
 
 **Coordination rules:**
@@ -1256,7 +1264,7 @@ The system has 12 hooks that run automatically:
 | `validate-skill-change.sh` | Skill file written | Advises running `/skill-test` after `.claude/skills/` changes |
 | `log-agent.sh` | Agent start | Logs agent invocations for audit trail |
 | `log-agent-stop.sh` | Agent stop | Completes agent audit trail (start + stop) |
-| `session-stop.sh` | Session end | Final session logging |
+| `session-stop.sh` | **Every response ends** | Session logging and the subagent spawn tally. Despite the name it fires once per response, not once per session. |
 
 ### Context Resilience
 
@@ -1327,8 +1335,9 @@ Phase gates are formal checkpoints. Run `/gate-check` with the transition name:
 - **CONCERNS** -- requirements met with acknowledged risks, passable
 - **FAIL** -- requirements not met, blocks advancement with specific remediation
 
-When a gate passes, `production/stage.txt` is updated (only then), which
-controls the status line and `/help` behavior.
+When a gate passes, `project.stage` in `project.yaml` is updated (only then) —
+mirrored to `production/stage.txt` — which controls the status line and `/help`
+behavior.
 
 ### Reverse Documentation
 
@@ -1397,6 +1406,10 @@ Reads existing code and generates GDD-format design documentation from it.
 | Unreal Blueprints | `ue-blueprint-specialist` | 3 |
 | Unreal replication | `ue-replication-specialist` | 3 |
 | Unreal UMG/CommonUI | `ue-umg-specialist` | 3 |
+| Babylon.js-specific help | `babylonjs-specialist` | 3 |
+| Babylon.js WebXR (VR/AR) | `babylonjs-webxr-specialist` | 3 |
+| Babylon.js shaders/NodeMaterial | `babylonjs-shader-specialist` | 3 |
+| Babylon GUI / 3D GUI | `babylonjs-gui-specialist` | 3 |
 
 ### Agent Hierarchy
 
@@ -1422,9 +1435,9 @@ conflicts go to `producer`.
 
 ## Appendix B: Slash Command Quick-Reference
 
-### All 73 Commands by Category
+### All 74 Commands by Category
 
-#### Onboarding and Navigation (6)
+#### Onboarding and Navigation (7)
 
 | Command | Purpose | Phase |
 |---------|---------|-------|
@@ -1432,6 +1445,7 @@ conflicts go to `producer`.
 | `/help` | Context-aware "what do I do next?" | Any |
 | `/project-stage-detect` | Full project audit to determine current phase | Any |
 | `/setup-engine` | Configure engine, pin version, set preferences | 1 |
+| `/settings` | View or change project config (`project.yaml` / `project.local.yaml`) | Any |
 | `/adopt` | Brownfield audit and migration plan | Any (existing projects) |
 | `/skill-improve` | Improve a skill via test-fix-retest loop | Any |
 
