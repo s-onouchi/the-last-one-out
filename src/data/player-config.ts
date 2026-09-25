@@ -46,7 +46,7 @@ export interface PlayerConfig {
 }
 
 export const PLAYER_CONFIG: PlayerConfig = {
-  moveSpeed: 3.5,
+  moveSpeed: 2.0,
   mouseLookSensitivity: 0.0025,
   touchLookSensitivity: 0.005,
   touchJoystickSensibility: 25,

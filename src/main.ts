@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
@@ -12,10 +13,11 @@ import { isTouchDevice } from "./input/device-detect";
 import { PcInputAdapter } from "./input/pc-input-adapter";
 import { TouchInputAdapter } from "./input/touch-input-adapter";
 import { PlayerController } from "./player/player-controller";
-import { createTestRoom } from "./scenes/test-room";
+import { createOfficeScene } from "./scenes/office-scene";
 import { InteractPromptOverlay } from "./ui/interact-prompt-overlay";
 
 // Implements Story 001: production/epics/the-last-one-out/story-001-first-person-controls.md
+// Office floor implements Story 002: production/epics/the-last-one-out/story-002-office-greybox.md
 
 const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
 const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
@@ -27,7 +29,7 @@ scene.collisionsEnabled = true;
 const camera = new FreeCamera("playerCamera", Vector3.Zero(), scene);
 new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
 
-const { interactableRegistry } = createTestRoom(scene);
+const { interactableRegistry, playerStartPosition, playerStartYawRadians, playerStartPitchRadians } = createOfficeScene(scene);
 
 const useTouchInput = isTouchDevice();
 const inputAdapter = useTouchInput ? new TouchInputAdapter(PLAYER_CONFIG) : new PcInputAdapter(canvas, PLAYER_CONFIG);
@@ -56,16 +58,25 @@ if (!useTouchInput) {
   });
 }
 
-// Debug launch arguments for run-and-observe captures: ?yaw=<deg>&pitch=<deg>
-// sets the starting look direction (pitch positive = up). See .claude/docs/run-and-observe.md.
+// Debug launch arguments for run-and-observe captures: ?x=<m>&z=<m> sets the
+// starting floor position, ?yaw=<deg>&pitch=<deg> the starting look direction
+// (pitch positive = up). See .claude/docs/run-and-observe.md.
 const launchParams = new URLSearchParams(location.search);
-const degreesParam = (name: string): number | undefined => {
+const numberParam = (name: string): number | undefined => {
   const raw = launchParams.get(name);
   const value = raw === null ? Number.NaN : Number(raw);
-  return Number.isFinite(value) ? (value * Math.PI) / 180 : undefined;
+  return Number.isFinite(value) ? value : undefined;
 };
-const startYawRadians = degreesParam("yaw");
-const startPitchRadians = degreesParam("pitch");
+const degreesParam = (name: string): number | undefined => {
+  const degrees = numberParam(name);
+  return degrees === undefined ? undefined : (degrees * Math.PI) / 180;
+};
+const startYawRadians = degreesParam("yaw") ?? playerStartYawRadians;
+const startPitchRadians = degreesParam("pitch") ?? playerStartPitchRadians;
+const debugX = numberParam("x");
+const debugZ = numberParam("z");
+if (debugX !== undefined) playerStartPosition.x = debugX;
+if (debugZ !== undefined) playerStartPosition.z = debugZ;
 
 const playerController = new PlayerController({
   scene,
@@ -73,11 +84,17 @@ const playerController = new PlayerController({
   config: PLAYER_CONFIG,
   inputAdapter,
   interactableRegistry,
-  // South end of the test room, facing north so the room and the probe box are in view.
-  startPosition: new Vector3(0, 0, -3),
-  ...(startYawRadians !== undefined ? { startYawRadians } : {}),
-  ...(startPitchRadians !== undefined ? { startPitchRadians } : {}),
+  // The player's own desk in 仕事部屋 (data/office-layout.ts's PLAYER_START).
+  startPosition: playerStartPosition,
+  startYawRadians,
+  startPitchRadians,
 });
+
+// Dev-only hook for automated run-and-observe checks (e.g. reading the player
+// position after walking through a doorway). Stripped from production builds.
+if (import.meta.env.DEV) {
+  (window as unknown as { __debug: unknown }).__debug = { camera };
+}
 
 const interactPrompt = new InteractPromptOverlay(playerController.onInteractionTargetChangedObservable);
 
