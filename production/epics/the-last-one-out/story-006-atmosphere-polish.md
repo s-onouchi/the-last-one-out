@@ -42,6 +42,7 @@
 - VHS フィルターは PostProcess（shader）で作る → babylonjs-shader-specialist の担当範囲
 - 音は AudioEngine v2（8.0 以降の新しい API）。9.8 の distance-only spatial mode は学習データより後 — reference で確認
 - モデルは glb で読み込む（`@babylonjs/loaders` を追加するときは Allowed Libraries に記録）
+- モデルはユーザーが Blender で作り、glTF（.glb）で書き出す。1単位 = 1m、手順に使う物は `src/data/office-layout.ts` の `PropId` と同じ名前にする。オフィス全体を Blender で作る場合は、配置データ（壁・机の位置）を glb のノードから読む形に切り替えるか決める
 - スマホの負荷は必ず実機か、低スペック設定で確認する
 
 ---

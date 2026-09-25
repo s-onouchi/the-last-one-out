@@ -19,7 +19,7 @@ engine:
   version: "9.28.0"
   language: "TypeScript"
   rendering: "WebGL2"
-  physics: "Havok"
+  physics: "Babylon built-in collisions (Havok deferred to Story 004)"
 
 specialists:
   code: "babylonjs-specialist"

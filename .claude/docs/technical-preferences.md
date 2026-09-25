@@ -13,7 +13,7 @@
 - **Engine**: Babylon.js 9.28.0
 - **Language**: TypeScript (strict + noUncheckedIndexedAccess mandatory)
 - **Rendering**: WebGL2
-- **Physics**: Havok
+- **Physics**: Babylon built-in collisions (`checkCollisions` + `moveWithCollisions`). Havok (`@babylonjs/havok`, installed but not imported) is deferred to Story 004 — adopt it only if anomalies need physical props (falling, toppling objects).
 
 ## Input & Platform
 
