@@ -1,7 +1,7 @@
 # Story 002: オフィス1フロアの仮配置
 
 > **Epic**: The Last One Out（MVP）
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Visual/Feel
 > **Estimate**: L (1〜2 days — 2026-09-25 に広さと部屋数を拡大)
@@ -78,3 +78,14 @@
 
 - Depends on: Story 001 must be DONE
 - Unlocks: Story 003, 004
+
+---
+
+## Completion Notes
+**Completed**: 2026-09-26
+**Criteria**: 7/8 passing（AC-6「1周およそ1分」は DEFERRED — 歩行距離からの計算のみで、実測プレイテストはまだ）
+**Deviations**:
+- ADVISORY：ユーザーと相談のうえ、企画書・Story 004/005/006・project.yaml・technical-preferences.md も併せて変更（オフィス拡大、Havok 見送り、Blender 差し替え方針）
+- ADVISORY：実装中に発見した不具合2件をその場で修正（InstancedMesh の読み込み漏れ／倉庫棚の隙間が狭すぎた）
+**Test Evidence**: Visual/Feel。専用の evidence doc（サインオフ表）は未作成。`production/qa/evidence/story-002-office-greybox/` にスクリーンショット11枚あり。`qa.level: minimal` のため advisory
+**Code Review**: Skipped — Solo mode
