@@ -1,12 +1,12 @@
 # Story 003: 退勤チェックリストと手順の進行管理
 
 > **Epic**: The Last One Out（MVP）
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
-> **Estimate**: [fill before starting]
+> **Estimate**: M (1 day)
 > **Manifest Version**: N/A (minimal — no control manifest)
-> **Last Updated**: [set by /dev-story when implementation begins]
+> **Last Updated**: 2026-09-26
 
 ## Context
 
@@ -35,6 +35,7 @@
 - [ ] 手順が進むと「手順が進んだ」通知（Observable）が出て、ほかのシステム（004 の異変）が受け取れる
 - [ ] 最後の手順（退勤打刻して出口へ）を終えると「クリア」の通知が出る
 - [ ] 進行状態を「直前の手順」に戻せる（005 の再開で使う）
+- [ ] パフォーマンス：N/A — 純粋なロジック（ステートマシン）と軽量なUIのみで、レンダリングや物理への影響なし
 
 ---
 
@@ -74,3 +75,14 @@
 
 - Depends on: Story 001, 002 must be DONE
 - Unlocks: Story 004, 005, 007
+
+---
+
+## Completion Notes
+**Completed**: 2026-09-26
+**Criteria**: 8/8 passing
+**Deviations**:
+- ADVISORY：PCの手順3つのうち2つが同じラベル「PCの電源を切る」で区別がつかない（席の区別が必要か要検討）
+- ADVISORY：`revertToStep`/`revertToPreviousStep` は専用の通知を出さない。Story 005 がこれを使うときは、チェックリスト画面を手動で再描画する処理が必要
+**Test Evidence**: Logic。`tests/unit/checklist/checklist-progress_test.ts` は未作成（`qa.level: minimal` のため advisory）。ステートマシンはBabylon/DOM非依存で書かれており、後からテスト可能。動作は自動操作テスト＋`production/qa/evidence/story-003-checklist-progression/`のスクリーンショット4枚で確認
+**Code Review**: Skipped — Solo mode
