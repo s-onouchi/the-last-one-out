@@ -25,6 +25,7 @@ import {
   type BoxSize,
   type FurnitureGridDefinition,
   type GeneratedSlot,
+  type PropId,
   type PropType,
 } from "../data/office-layout";
 
@@ -36,33 +37,57 @@ export interface OfficeSceneResult {
 }
 
 /**
- * A placeholder Interactable for a greybox procedure prop: toggles its own
- * material's albedo and emissive color and logs to the console when
- * interacted with — enough to prove the prop is reachable, aimable, and
- * reacts to "調べる". This is NOT the real closing-procedure logic (no
- * checklist, no ordering, no persistence) — that is Story 003/004's job,
- * keyed off each prop's `PropId` from `data/office-layout.ts`.
+ * Interactable for a real closing-procedure prop: "調べる" asks the injected
+ * `completeStep` callback (backed by `ChecklistProgress.tryCompleteStep`,
+ * wired in `main.ts`) whether this prop's `PropId` is the checklist's CURRENT
+ * step. Only turns its material to `completeColor` when that call returns
+ * `true` — a future-step prop's `completeStep` call returns `false` and the
+ * prop stays visually unchanged, so interacting out of order never shows
+ * progress (Story 003 AC: "順番外の物を調べても手順は進まない"). Once this
+ * prop's own step has completed, further interacts are no-ops (nothing left
+ * for this prop to do).
+ *
+ * Implements Story 003 (production/epics/the-last-one-out/story-003-checklist-progression.md).
+ * Replaces Story 002's `PlaceholderProcedureProp` color-toggle placeholder.
  */
-class PlaceholderProcedureProp implements Interactable {
+class ChecklistProcedureProp implements Interactable {
   private readonly _material: PBRMaterial;
-  private readonly _propId: string;
-  private readonly _baseColor: Color3;
+  private readonly _propId: PropId;
   private readonly _highlightEmissive: Color3;
-  private readonly _activeColor: Color3;
-  private _isActivated = false;
+  private readonly _completeColor: Color3;
+  private readonly _completeStep: (propId: PropId) => boolean;
+  private _isComplete = false;
 
-  public constructor(material: PBRMaterial, propId: string, baseColor: Color3, highlightEmissive: Color3, activeColor: Color3) {
+  public constructor(
+    material: PBRMaterial,
+    propId: PropId,
+    highlightEmissive: Color3,
+    completeColor: Color3,
+    completeStep: (propId: PropId) => boolean
+  ) {
     this._material = material;
     this._propId = propId;
-    this._baseColor = baseColor;
     this._highlightEmissive = highlightEmissive;
-    this._activeColor = activeColor;
+    this._completeColor = completeColor;
+    this._completeStep = completeStep;
   }
 
   public onInteract(): void {
-    this._isActivated = !this._isActivated;
-    console.log(`[office-scene] interacted with ${this._propId}, activated=${this._isActivated}`);
-    this._material.albedoColor = this._isActivated ? this._activeColor : this._baseColor;
+    if (this._isComplete) {
+      return;
+    }
+
+    const advanced = this._completeStep(this._propId);
+    if (!advanced) {
+      // Out-of-order interact (a future step's prop): deliberately a no-op
+      // for progress, per Story 003 AC. Logged (not silent) so greybox
+      // playtesting can tell the difference from a broken wiring.
+      console.log(`[office-scene] ${this._propId} interacted with out of order — checklist did not advance`);
+      return;
+    }
+
+    this._isComplete = true;
+    this._material.albedoColor = this._completeColor;
   }
 
   public setHighlighted(highlighted: boolean): void {
@@ -158,8 +183,15 @@ function instantiateGrid(scene: Scene, material: PBRMaterial, grid: FurnitureGri
  * that uses them has been assigned; each procedure prop keeps its own
  * unfrozen material instance because `setHighlighted`/`onInteract` mutate its
  * emissive/albedo color at runtime.
+ *
+ * @param completeStep Story 003 seam into the checklist system: called with a
+ * procedure prop's `PropId` when it's interacted with, must return whether
+ * that step actually advanced (backed by `ChecklistProgress.tryCompleteStep`
+ * in `main.ts`). Kept as a plain callback rather than importing
+ * `ChecklistProgress` directly so this file stays about scene construction,
+ * not checklist internals.
  */
-export function createOfficeScene(scene: Scene): OfficeSceneResult {
+export function createOfficeScene(scene: Scene, completeStep: (propId: PropId) => boolean): OfficeSceneResult {
   const staticMaterial = new PBRMaterial("officeStaticMaterial", scene);
   staticMaterial.albedoColor = new Color3(0.62, 0.6, 0.58);
   staticMaterial.metallic = 0;
@@ -255,7 +287,7 @@ export function createOfficeScene(scene: Scene): OfficeSceneResult {
     propMaterial.roughness = 0.6;
     mesh.material = propMaterial;
 
-    interactableRegistry.set(mesh, new PlaceholderProcedureProp(propMaterial, propDef.id, visuals.base, visuals.highlight, visuals.active));
+    interactableRegistry.set(mesh, new ChecklistProcedureProp(propMaterial, propDef.id, visuals.highlight, visuals.active, completeStep));
   }
 
   return {

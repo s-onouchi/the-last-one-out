@@ -8,16 +8,20 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 // scene.collisionsEnabled and mesh.moveWithCollisions need at runtime.
 import "@babylonjs/core/Collisions/collisionCoordinator";
 
+import { CLOSING_PROCEDURE_STEPS } from "./data/closing-procedure";
 import { PLAYER_CONFIG } from "./data/player-config";
+import { ChecklistProgress } from "./gameplay/checklist-progress";
 import { isTouchDevice } from "./input/device-detect";
 import { PcInputAdapter } from "./input/pc-input-adapter";
 import { TouchInputAdapter } from "./input/touch-input-adapter";
 import { PlayerController } from "./player/player-controller";
 import { createOfficeScene } from "./scenes/office-scene";
+import { ChecklistOverlay } from "./ui/checklist-overlay";
 import { InteractPromptOverlay } from "./ui/interact-prompt-overlay";
 
 // Implements Story 001: production/epics/the-last-one-out/story-001-first-person-controls.md
 // Office floor implements Story 002: production/epics/the-last-one-out/story-002-office-greybox.md
+// Checklist progression implements Story 003: production/epics/the-last-one-out/story-003-checklist-progression.md
 
 const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
 const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
@@ -29,11 +33,38 @@ scene.collisionsEnabled = true;
 const camera = new FreeCamera("playerCamera", Vector3.Zero(), scene);
 new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
 
-const { interactableRegistry, playerStartPosition, playerStartYawRadians, playerStartPitchRadians } = createOfficeScene(scene);
+const checklistProgress = new ChecklistProgress(CLOSING_PROCEDURE_STEPS);
+// Debug visibility only — Story 004 (anomalies) and Story 007 (clear screen)
+// are the actual reactions to these; this story only fires the Observables.
+checklistProgress.onStepCompletedObservable.add((event) => {
+  console.log(`[checklist] step ${event.stepIndex} complete (${event.propId}): ${event.label}`);
+});
+checklistProgress.onProcedureClearedObservable.add((event) => {
+  console.log(`[checklist] procedure cleared (${event.totalSteps} steps)`);
+});
+
+const { interactableRegistry, playerStartPosition, playerStartYawRadians, playerStartPitchRadians } = createOfficeScene(
+  scene,
+  (propId) => checklistProgress.tryCompleteStep(propId)
+);
 
 const useTouchInput = isTouchDevice();
 const inputAdapter = useTouchInput ? new TouchInputAdapter(PLAYER_CONFIG) : new PcInputAdapter(canvas, PLAYER_CONFIG);
 console.log(`[input] using ${useTouchInput ? "touch" : "pc"} input adapter`);
+
+// Notebook-style checklist HUD: PC toggles via Tab (raw `document` keydown,
+// not routed through InputAdapter/PlayerInputFrame — this is a UI toggle, not
+// a gameplay input, and pointer lock stays engaged the whole time since this
+// listener never touches it). Phones get an on-screen toggle button instead
+// (drawn by ChecklistOverlay itself), per the story's AC ("PC: Tab など／
+// スマホ: ボタン").
+const checklistOverlay = new ChecklistOverlay(checklistProgress, { showToggleButton: useTouchInput });
+document.addEventListener("keydown", (event) => {
+  if (event.code === "Tab" && !event.repeat) {
+    event.preventDefault();
+    checklistOverlay.toggle();
+  }
+});
 
 // PC: movement only works while the pointer is locked, so tell the player to click.
 if (!useTouchInput) {
@@ -93,7 +124,7 @@ const playerController = new PlayerController({
 // Dev-only hook for automated run-and-observe checks (e.g. reading the player
 // position after walking through a doorway). Stripped from production builds.
 if (import.meta.env.DEV) {
-  (window as unknown as { __debug: unknown }).__debug = { camera };
+  (window as unknown as { __debug: unknown }).__debug = { camera, checklistProgress, checklistOverlay };
 }
 
 const interactPrompt = new InteractPromptOverlay(playerController.onInteractionTargetChangedObservable);
@@ -109,5 +140,7 @@ window.addEventListener("resize", () => engine.resize());
 window.addEventListener("beforeunload", () => {
   playerController.dispose();
   interactPrompt.dispose();
+  checklistOverlay.dispose();
+  checklistProgress.dispose();
   engine.dispose();
 });
